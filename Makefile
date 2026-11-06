@@ -1,0 +1,35 @@
+.DEFAULT_GOAL := help
+.PHONY: help sync lock-check lint format format-check test ci hooks pre-commit run
+
+help: ## List targets
+	@grep -hE '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "%-14s %s\n", $$1, $$2}'
+
+sync: ## Install all dependencies
+	uv sync --all-groups
+
+lock-check: ## Fail if uv.lock is out of date
+	uv lock --check
+
+lint: ## Check code with ruff
+	uv run ruff check .
+
+format: ## Fix lint errors and format code
+	uv run ruff check --fix .
+	uv run ruff format .
+
+format-check: ## Fail if code is not formatted
+	uv run ruff format --check .
+
+test: ## Run tests
+	uv run pytest
+
+ci: lock-check lint format-check test ## Everything GitHub Actions runs
+
+hooks: ## Install the git pre-commit hooks
+	uv run pre-commit install
+
+pre-commit: ## Run the pre-commit hooks on all files
+	uv run pre-commit run --all-files
+
+run: ## Run the app
+	uv run local-branch-overview

@@ -1,0 +1,53 @@
+name: Release
+
+# On every push to main (a merged feature branch), release-please reads the conventional
+# commits since the last release and keeps one release PR open: the next version in
+# pyproject.toml, and CHANGELOG.md. The second job runs `uv lock` on that PR, as uv.lock
+# records the project's version too (CI's `uv lock --check` fails otherwise). Merging the PR
+# tags the version (v1.2.3) and creates a GitHub Release.
+# feat: -> minor, fix: -> patch, feat!/BREAKING CHANGE -> major; docs:, test:, ci:, chore:
+# alone make no release. Config: release-please-config.json.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write # the tag, the release, the release PR's branch
+  pull-requests: write # the release PR
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      pr: ${{ steps.release.outputs.pr }}
+    steps:
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        id: release
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  # The release PR changes pyproject.toml's version: bring uv.lock along on the same branch.
+  lockfile:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.pr }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ fromJSON(needs.release-please.outputs.pr).headBranchName }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
+      - name: Update uv.lock to the release's version
+        run: |
+          uv lock
+          if git diff --quiet uv.lock; then
+            echo "uv.lock already matches"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: uv.lock at the release's version" uv.lock
+          git push

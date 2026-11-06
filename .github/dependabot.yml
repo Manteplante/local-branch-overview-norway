@@ -1,0 +1,19 @@
+# Weekly PRs that bump dependencies, into main: Dependabot's branch is a feature branch like
+# any other (feature branch → main). Minor and patch bumps come grouped, one PR per folder;
+# majors come one by one. The workflows' actions are pinned to commits (a tag can be moved to
+# other code); Dependabot moves the pins and their `# vX.Y.Z` comments.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+
+  # Python (pyproject.toml + uv.lock).
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      python:
+        update-types: [minor, patch]
