@@ -36,6 +36,7 @@ def test_parse_branch_page(arendal_html: str) -> None:
     assert (details.latitude, details.longitude) == (58.4887604, 8.7585903)
 
     names = [a.name for a in details.activities]
+    assert {a.section for a in details.activities} == {"Tilbud og aktiviteter"}
     assert len(names) == 16
     assert names[0] == "Barnas Røde Kors"
     assert names[-1] == "Åpen møteplass/språkkafè"
