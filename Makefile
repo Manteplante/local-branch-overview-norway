@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help sync lock-check lint format format-check test ci hooks pre-commit run scrape
+.PHONY: help sync lock-check lint format format-check test ci hooks pre-commit run scrape fixtures
 
 help: ## List targets
 	@grep -hE '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "%-14s %s\n", $$1, $$2}'
@@ -36,3 +36,6 @@ run: ## Run the app
 
 scrape: ## Scrape all districts to data/raw (slow, ~2-3 h, resumable)
 	uv run scrape-branches
+
+fixtures: ## Re-snapshot all districts + 2 branches each for tests (~10-15 min)
+	uv run python scripts/refresh_fixtures.py

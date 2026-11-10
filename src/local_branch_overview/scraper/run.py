@@ -12,10 +12,13 @@ import pandas as pd
 from local_branch_overview.scraper.client import PoliteClient
 from local_branch_overview.scraper.parse import (
     DISTRICTS_URL,
+    Branch,
     District,
+    branch_index_url,
     parse_branch_page,
     parse_branches,
     parse_districts,
+    split_by_group,
 )
 
 log = logging.getLogger(__name__)
@@ -28,6 +31,7 @@ COLUMNS = [
     "address",
     "latitude",
     "longitude",
+    "section",
     "activity",
     "description",
     "branch_url",
@@ -39,10 +43,9 @@ class Fetcher(Protocol):
 
 
 def scrape_district(
-    client: Fetcher, district: District, limit_branches: int | None = None
+    client: Fetcher, district: District, branches: list[Branch]
 ) -> tuple[pd.DataFrame, list[str]]:
     """Rows for one district (one per activity) and the URLs of branches that failed."""
-    branches = parse_branches(client.get(district.url))[:limit_branches]
     rows: list[dict] = []
     failed: list[str] = []
     for i, branch in enumerate(branches, 1):
@@ -67,6 +70,7 @@ def scrape_district(
             rows.append(
                 base
                 | {
+                    "section": activity.section if activity else "",
                     "activity": activity.name if activity else "",
                     "description": activity.description if activity else "",
                 }
@@ -94,7 +98,11 @@ def scrape(
     limit_branches: int | None = None,
     force: bool = False,
 ) -> list[str]:
-    """Write `<out_dir>/<district-slug>.csv` per district. Returns the failed branch URLs."""
+    """Write `<out_dir>/<district-slug>.csv` per district. Returns the failed branch URLs.
+
+    Districts whose index groups its branches (Trøndelag: Nord/Sør) get one CSV per group.
+    The index page is fetched even when resuming, so a half-done split district finishes.
+    """
     districts = parse_districts(client.get(DISTRICTS_URL))
     if only:
         unknown = only - {d.slug for d in districts}
@@ -104,20 +112,23 @@ def scrape(
 
     failed: list[str] = []
     for n, district in enumerate(districts, 1):
-        path = out_dir / f"{district.slug}.csv"
-        if path.exists() and not force:
-            log.info(
-                "[%d/%d] %s: already scraped, skipping",
-                n,
-                len(districts),
-                district.slug,
-            )
-            continue
         log.info("[%d/%d] %s", n, len(districts), district.name)
-        df, district_failed = scrape_district(client, district, limit_branches)
-        _write_atomic(df, path)
-        failed += district_failed
-        log.info("Wrote %s (%d rows)", path, len(df))
+        branches = parse_branches(client.get(branch_index_url(district)))
+        if not branches:
+            log.warning("%s: no local branches listed, nothing written", district.slug)
+            continue
+        for part, members in split_by_group(district, branches):
+            path = out_dir / f"{part.slug}.csv"
+            if path.exists() and not force:
+                log.info("%s: already scraped, skipping", part.slug)
+                continue
+            df, part_failed = scrape_district(client, part, members[:limit_branches])
+            failed += part_failed
+            if df.empty:  # no CSV, so the next run tries this district again
+                log.warning("%s: no branch data, nothing written", part.slug)
+                continue
+            _write_atomic(df, path)
+            log.info("Wrote %s (%d rows)", path, len(df))
     return failed
 
 
@@ -135,7 +146,9 @@ def main(argv: list[str] | None = None) -> None:
         "--limit-branches", type=int, help="at most N branches per district"
     )
     parser.add_argument(
-        "--force", action="store_true", help="re-scrape districts with a CSV"
+        "--force",
+        action="store_true",
+        help="re-scrape districts that already have a CSV",
     )
     args = parser.parse_args(argv)
 
