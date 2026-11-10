@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help sync lock-check lint format format-check test ci hooks pre-commit run
+.PHONY: help sync lock-check lint format format-check test ci hooks pre-commit run scrape
 
 help: ## List targets
 	@grep -hE '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "%-14s %s\n", $$1, $$2}'
@@ -33,3 +33,6 @@ pre-commit: ## Run the pre-commit hooks on all files
 
 run: ## Run the app
 	uv run local-branch-overview
+
+scrape: ## Scrape all districts to data/raw (slow, ~2-3 h, resumable)
+	uv run scrape-branches

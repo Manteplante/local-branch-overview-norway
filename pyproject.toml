@@ -8,13 +8,14 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
+    "beautifulsoup4>=4.15.0",
     "pandas>=3.1.1",
     "requests>=2.34.2",
-    "selenium>=4.52.0",
 ]
 
 [project.scripts]
 local-branch-overview = "local_branch_overview:main"
+scrape-branches = "local_branch_overview.scraper.run:main"
 
 [build-system]
 requires = ["uv_build>=0.13.5,<0.14.0"]
