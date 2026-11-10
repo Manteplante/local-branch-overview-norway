@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/Manteplante/local-branch-overview/compare/v0.3.0...v0.4.0) (2026-11-10)
+
+
+### Features
+
+* add Streamlit dashboard with map of local branches ([293b5c8](https://github.com/Manteplante/local-branch-overview/commit/293b5c85a8736a3f33d61625d5e47851e062bc3d))
+
 ## [0.3.0](https://github.com/Manteplante/local-branch-overview/compare/v0.2.0...v0.3.0) (2026-11-10)
 
 
