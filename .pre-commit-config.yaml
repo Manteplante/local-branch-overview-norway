@@ -13,5 +13,6 @@ repos:
       - id: end-of-file-fixer
       - id: check-yaml
       - id: check-added-large-files
+        exclude: ^data/tables/ # the app's committed tables (~2 MB) are meant to be there
       - id: mixed-line-ending
         args: [--fix=lf]

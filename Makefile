@@ -1,5 +1,6 @@
 .DEFAULT_GOAL := help
-.PHONY: help sync hooks lint format format-check test lock-check pre-commit ci run scrape fixtures
+.PHONY: help sync hooks lint format format-check test lock-check pre-commit ci run scrape \
+	transform report fixtures
 
 # `##@ Name` starts a group in `make help`; `target: ## text` lists a target in it.
 help: ## List targets
@@ -40,13 +41,19 @@ ci: lock-check lint format-check test ## Everything GitHub Actions runs
 
 ##@ App
 
-run: ## Run the app
-	uv run local-branch-overview
+run: ## Run the Streamlit app on http://localhost:8501
+	uv run streamlit run app.py
 
 ##@ Data
 
 scrape: ## Scrape all districts to data/raw (slow, ~2-3 h, resumable)
 	uv run scrape-branches
+
+transform: ## Build the app tables in data/tables from data/raw
+	uv run python -m backend.transform
+
+report: ## Print a markdown summary of raw files, tables and pages
+	uv run python -m backend.report
 
 fixtures: ## Re-snapshot all districts + 2 branches each for tests (~10-15 min)
 	uv run python scripts/refresh_fixtures.py

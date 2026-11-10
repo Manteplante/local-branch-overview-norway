@@ -8,6 +8,7 @@ on:
     branches:
       - main
       - 'feature/*'
+      - 'manteplante/**'
       - 'dependabot/**'
 
 # The job only reads the repository: its GITHUB_TOKEN can change nothing.
