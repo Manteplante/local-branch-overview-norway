@@ -12,6 +12,7 @@ make ci                # lock-check + lint + format-check + test — exactly wha
 make lint / make format / make test
 make hooks / make pre-commit
 make run
+make scrape           # scrape all districts to data/raw/<district>.csv (~2-3 h, resumable)
 # List more make commands as project grows here
 ```
 
