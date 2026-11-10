@@ -11,8 +11,9 @@ uv sync --all-groups   # install (same as make sync)
 make ci                # lock-check + lint + format-check + test — exactly what GitHub Actions runs
 make lint / make format / make test
 make hooks / make pre-commit
-make run
-make scrape           # scrape all districts to data/raw/<district>.csv (~2-3 h, resumable)
+make run               # Streamlit app on http://localhost:8501
+make scrape            # scrape all districts to data/raw/<district>.csv (~2-3 h, resumable)
+make transform         # data/raw -> data/tables (what the app reads; committed)
 # List more make commands as project grows here
 ```
 

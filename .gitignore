@@ -2,3 +2,6 @@
 __pycache__/
 .pytest_cache/
 .ruff_cache/
+
+# Scraper output stays local; the built tables in data/tables/ are committed.
+data/raw/
