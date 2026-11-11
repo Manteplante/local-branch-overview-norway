@@ -28,6 +28,8 @@ make transform         # data/raw -> data/tables (what the app reads; committed)
 ## Tests, CI/CD and docs — keep them in step with the code
 
 - Read `SKILLS.md` before changing tests, CI, hooks, Make targets, Dependabot or releases.
+- Read `docs/missing-data-quality.md` before working on addresses, coordinates or geocoding
+  (the site no longer publishes branch addresses).
 
 ## Communication
 

@@ -22,5 +22,6 @@ How tests, CI/CD, hooks, dependencies and releases fit together. `Makefile` is t
 
 ## Known gaps
 
+- Branch addresses are gone from rodekors.no and many branches lack coordinates. The plan to fill them in during `make transform` is in `docs/missing-data-quality.md`.
 - Release PRs get no CI run, because pushes made with `GITHUB_TOKEN` do not trigger workflows. If `main` requires the CI check, these PRs cannot merge until the workflow uses a PAT or GitHub App token.
 - release-please needs the repo setting "Allow GitHub Actions to create and approve pull requests".
