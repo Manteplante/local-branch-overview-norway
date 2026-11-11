@@ -2,7 +2,8 @@
 
     make transform
 
-`branches`    one row per local branch, for the map
+`branches`    one row per local branch, for the map. Coordinates the site lacks come
+              from the geocode cache (`make geocode`); `location_source` says which.
 `activities`  one row per activity, with a `category` for filtering
 """
 
@@ -12,6 +13,7 @@ import pandas as pd
 
 from . import config, storage
 from .categories import categorize
+from .geocode import GeocodeResult, branch_query, load_cache
 
 TEXT_COLUMNS = [
     "district",
@@ -52,8 +54,14 @@ def build_activities(raw: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def build_branches(activities: pd.DataFrame) -> pd.DataFrame:
-    """One row per branch, with its activity count and categories."""
+def build_branches(
+    activities: pd.DataFrame, geocodes: dict[str, GeocodeResult] | None = None
+) -> pd.DataFrame:
+    """One row per branch, with its activity count and categories.
+
+    Branches without site coordinates get them from `geocodes` (query -> result), if
+    there is a match; the site's own coordinates always win.
+    """
 
     def summarize(group: pd.DataFrame) -> pd.Series:
         first = group.iloc[0]
@@ -77,9 +85,21 @@ def build_branches(activities: pd.DataFrame) -> pd.DataFrame:
         .apply(summarize, include_groups=False)
         .reset_index()
     )
-    branches["has_location"] = (
-        branches["latitude"].notna() & branches["longitude"].notna()
-    )
+    site = branches["latitude"].notna() & branches["longitude"].notna()
+    branches["location_source"] = site.map({True: "site", False: "none"})
+    for i in branches.index[~site]:
+        row = branches.loc[i]
+        result = (geocodes or {}).get(branch_query(row["branch"], row["district"]))
+        if result is None or not result.found:
+            continue
+        branches.loc[i, ["latitude", "longitude", "location_source"]] = [
+            result.latitude,
+            result.longitude,
+            "google",
+        ]
+        if not row["address"]:
+            branches.loc[i, "address"] = result.formatted_address
+    branches["has_location"] = branches["location_source"] != "none"
     columns = [
         "district",
         "district_slug",
@@ -89,6 +109,7 @@ def build_branches(activities: pd.DataFrame) -> pd.DataFrame:
         "latitude",
         "longitude",
         "has_location",
+        "location_source",
         "n_activities",
         "categories",
         "branch_url",
@@ -96,14 +117,16 @@ def build_branches(activities: pd.DataFrame) -> pd.DataFrame:
     return branches[columns].sort_values(["district", "branch"], ignore_index=True)
 
 
-def build_tables(raw: pd.DataFrame) -> dict[str, pd.DataFrame]:
+def build_tables(
+    raw: pd.DataFrame, geocodes: dict[str, GeocodeResult] | None = None
+) -> dict[str, pd.DataFrame]:
     """{table name: DataFrame} for the app."""
     activities = build_activities(raw)
     return {
         "activities": activities.sort_values(
             ["district", "branch", "category", "activity"], ignore_index=True
         ),
-        "branches": build_branches(activities),
+        "branches": build_branches(activities, geocodes),
     }
 
 
@@ -115,9 +138,13 @@ def run() -> None:
         )
         return
 
-    print(f"[transform] Read {len(raw):,} raw rows")
-    for name, df in build_tables(raw).items():
+    geocodes = load_cache()
+    print(f"[transform] Read {len(raw):,} raw rows, {len(geocodes)} cached geocodes")
+    tables = build_tables(raw, geocodes)
+    for name, df in tables.items():
         storage.save(name, df)
+    counts = tables["branches"]["location_source"].value_counts().to_dict()
+    print(f"[transform] Branch locations: {counts}")
 
 
 if __name__ == "__main__":

@@ -6,6 +6,7 @@ import pytest
 from backend import config, storage, transform
 from backend.categories import CATEGORIES, OTHER, categorize
 from backend.filters import filter_activities, filter_branches
+from backend.geocode import GeocodeResult
 from backend.mapview import build_map, popup_html
 
 
@@ -47,6 +48,7 @@ def raw_rows() -> pd.DataFrame:
 def tables_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.setattr(config, "TABLES_DIR", tmp_path / "tables")
     monkeypatch.setattr(config, "RAW_DIR", tmp_path / "raw")
+    monkeypatch.setattr(config, "GEOCODE_CACHE", tmp_path / "geocode_cache.csv")
     return tmp_path
 
 
@@ -105,6 +107,37 @@ def test_build_tables() -> None:
         "",
     }
     assert not activities[transform.TEXT_COLUMNS].isna().any().any()
+    assert branches.set_index("branch_slug").location_source.to_dict() == {
+        "arendal": "site",
+        "grimstad": "none",
+        "flatanger": "none",
+    }
+
+
+def test_geocodes_fill_only_missing_coordinates() -> None:
+    geocodes = {
+        "Grimstad, Agder, Norway": GeocodeResult(
+            query="Grimstad, Agder, Norway", status="OK", latitude=58.34,
+            longitude=8.59, formatted_address="Grimstad, Norge",
+        ),
+        "Arendal, Agder, Norway": GeocodeResult(  # must not override the site's
+            query="Arendal, Agder, Norway", status="OK", latitude=1.0, longitude=1.0,
+        ),
+        "Flatanger, Trøndelag, Norway": GeocodeResult(
+            query="Flatanger, Trøndelag, Norway", status="ZERO_RESULTS",
+        ),
+    }  # fmt: skip
+
+    branches = transform.build_tables(raw_rows(), geocodes)["branches"]
+
+    by_slug = branches.set_index("branch_slug")
+    assert by_slug.loc["arendal", "latitude"] == 58.49
+    assert by_slug.loc["arendal", "location_source"] == "site"
+    grimstad = by_slug.loc["grimstad"]
+    assert (grimstad.latitude, grimstad.longitude) == (58.34, 8.59)
+    assert grimstad.location_source == "google" and bool(grimstad.has_location)
+    assert grimstad.address == "Frivoldveien 11, 4877 GRIMSTAD"  # site address kept
+    assert by_slug.loc["flatanger", "location_source"] == "none"
 
 
 def test_run_writes_tables_and_skips_without_raw(tables_dir: Path) -> None:

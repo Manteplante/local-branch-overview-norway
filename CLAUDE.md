@@ -14,6 +14,8 @@ make hooks / make pre-commit
 make run               # Streamlit app on http://localhost:8501
 make scrape            # scrape all districts to data/raw/<district>.csv (~2-3 h, resumable)
 make scrape-sample     # test scrape: <=2 branches per district to data/sample/ (~10 min)
+make geocode           # Google-geocode branches without coordinates -> data/geocode_cache.csv
+                       #   (billable: needs GOOGLE_API_TOKEN + GOOGLE_GEOCODING_CONFIRM=1)
 make transform         # data/raw -> data/tables (what the app reads; committed)
 # List more make commands as project grows here
 ```
