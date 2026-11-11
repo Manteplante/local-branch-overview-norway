@@ -113,3 +113,48 @@ def test_half_done_split_district_resumes_the_missing_part(
 
     assert (tmp_path / "trondelag-nord.csv").read_text() == "old"
     assert (tmp_path / "trondelag-sor.csv").exists()
+
+
+OSLO = "https://www.rodekors.no/lokalforeninger/oslo/"
+OSLO_FIXTURES = Path(__file__).parent / "fixtures/oslo"
+
+
+def _oslo_pages(pages: dict[str, str]) -> dict[str, str]:
+    def read(name: str) -> str:
+        return (OSLO_FIXTURES / f"{name}.html").read_text(encoding="utf-8")
+
+    return pages | {
+        f"{OSLO}om-organisasjonen/kontakt/": read("kontakt"),
+        f"{OSLO}aktiviteter/": read("aktiviteter"),
+        f"{OSLO}aktiviteter/barn-og-unge/": read("barn-og-unge"),
+    }
+
+
+def test_oslo_is_one_branch_with_activities_from_category_pages(
+    tmp_path: Path, pages: dict[str, str]
+) -> None:
+    client = FakeClient(_oslo_pages(pages))
+
+    failed = scrape(client, tmp_path, only={"oslo"}, limit_branches=2)
+
+    df = pd.read_csv(tmp_path / "oslo.csv", keep_default_na=False)
+    assert failed == []
+    assert set(df.branch_slug) == {"oslo"}
+    assert set(df.address) == {"Hausmanns gate 23, 0182 Oslo"}
+    assert set(df.latitude) == {59.9171449}
+    # 2 categories: barn-og-unge has 13 activities, the other page (fake) none.
+    assert len(df) == 13
+    assert set(df.section) == {"Tilbud og aktiviteter for barn og unge i Oslo"}
+    assert len(client.urls) == 5  # districts, contact, activities, 2 categories
+
+
+def test_oslo_contact_page_failure_writes_nothing(
+    tmp_path: Path, pages: dict[str, str]
+) -> None:
+    contact = f"{OSLO}om-organisasjonen/kontakt/"
+    client = FakeClient(_oslo_pages(pages), fail=frozenset({contact}))
+
+    failed = scrape(client, tmp_path, only={"oslo"})
+
+    assert failed == [contact]
+    assert not (tmp_path / "oslo.csv").exists()

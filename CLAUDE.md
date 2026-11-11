@@ -13,6 +13,7 @@ make lint / make format / make test
 make hooks / make pre-commit
 make run               # Streamlit app on http://localhost:8501
 make scrape            # scrape all districts to data/raw/<district>.csv (~2-3 h, resumable)
+make scrape-sample     # test scrape: <=2 branches per district to data/sample/ (~10 min)
 make transform         # data/raw -> data/tables (what the app reads; committed)
 # List more make commands as project grows here
 ```

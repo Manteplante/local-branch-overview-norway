@@ -1,8 +1,12 @@
+from pathlib import Path
+
 from conftest import fixture_html
 
 from local_branch_overview.scraper.parse import (
+    parse_activity_categories,
     parse_branch_page,
     parse_branches,
+    parse_contact_page,
     parse_districts,
 )
 
@@ -68,3 +72,17 @@ def test_parse_branch_page_without_activities_or_address() -> None:
     assert details.address == ""
     assert details.latitude is None and details.longitude is None
     assert details.activities == []
+
+
+def test_oslo_contact_and_categories() -> None:
+    oslo = Path(__file__).parent / "fixtures/oslo"
+    contact = parse_contact_page((oslo / "kontakt.html").read_text(encoding="utf-8"))
+    assert contact.address == "Hausmanns gate 23, 0182 Oslo"
+    assert (contact.latitude, contact.longitude) == (59.9171449, 10.7548383)
+
+    index = "https://www.rodekors.no/lokalforeninger/oslo/aktiviteter/"
+    categories = parse_activity_categories(
+        (oslo / "aktiviteter.html").read_text(encoding="utf-8"), index
+    )
+    assert len(categories) == 7
+    assert categories[0].url == f"{index}barn-og-unge/"
