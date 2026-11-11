@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 .PHONY: help sync hooks lint format format-check test lock-check pre-commit ci run scrape \
-	transform report fixtures
+	scrape-sample transform report fixtures
 
 # `##@ Name` starts a group in `make help`; `target: ## text` lists a target in it.
 help: ## List targets
@@ -48,6 +48,9 @@ run: ## Run the Streamlit app on http://localhost:8501
 
 scrape: ## Scrape all districts to data/raw (slow, ~2-3 h, resumable)
 	uv run scrape-branches
+
+scrape-sample: ## Test scrape: <=2 branches per district to data/sample (~10 min)
+	uv run scrape-branches --limit-branches 2 --out data/sample
 
 transform: ## Build the app tables in data/tables from data/raw
 	uv run python -m backend.transform

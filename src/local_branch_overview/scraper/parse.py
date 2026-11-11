@@ -15,6 +15,10 @@ NON_ACTIVITY_SECTIONS = re.compile(
 )
 # Districts whose branch list lives on a subpage instead of the district page.
 BRANCH_INDEX_PATHS = {"trondelag": "finn-fram/"}
+# Districts that are one organisation without local branches (Oslo). The district is
+# scraped as a single branch: address from a contact page, activities from the category
+# pages linked on an activities page. Values: (contact path, activities path).
+SINGLE_BRANCH_PAGES = {"oslo": ("om-organisasjonen/kontakt/", "aktiviteter/")}
 # Branch pages are exactly two levels deep: /lokalforeninger/<district>/<branch>/.
 _BRANCH_HREF = re.compile(r"^/lokalforeninger/[^/]+/[^/]+/$")
 
@@ -34,6 +38,14 @@ class Branch:
     slug: str
     url: str
     group: str = ""  # sub-region heading on the index page, e.g. "Nord" in Trøndelag
+
+
+@dataclass(frozen=True)
+class Category:
+    """An activity category page of a single-branch district, e.g. "Barn og unge"."""
+
+    name: str
+    url: str
 
 
 @dataclass(frozen=True)
@@ -203,4 +215,44 @@ def parse_branch_page(html: str) -> BranchDetails:
         latitude=latitude,
         longitude=longitude,
         activities=_activities(soup),
+    )
+
+
+def parse_activity_categories(html: str, index_url: str) -> list[Category]:
+    """Category pages linked from a single-branch district's activities page.
+
+    Only links exactly one level below `index_url` count (`h2 > a`, as on Oslo's page).
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    path = index_url.removeprefix(BASE_URL)
+    child = re.compile(rf"^{re.escape(path)}[^/]+/$")
+    categories: dict[str, Category] = {}
+    for link in soup.select("h2 > a[href]"):
+        if child.match(link["href"]):
+            url = urljoin(BASE_URL, link["href"])
+            categories.setdefault(url, Category(name=_clean(link.get_text()), url=url))
+    return list(categories.values())
+
+
+def _visiting_address(soup: BeautifulSoup) -> str:
+    """Lines under a "Besøksadresse…" heading, minus the organisation's name."""
+    heading = soup.find(
+        "h2", string=lambda s: s is not None and s.strip().startswith("Besøksadresse")
+    )
+    paragraph = heading.find_next_sibling("p") if heading else None
+    if paragraph is None:
+        return ""
+    lines = [_clean(line) for line in paragraph.get_text("\n").splitlines()]
+    return ", ".join(line for line in lines if line and "Røde Kors" not in line)
+
+
+def parse_contact_page(html: str) -> BranchDetails:
+    """Address and map coordinates from a single-branch district's contact page."""
+    soup = BeautifulSoup(html, "html.parser")
+    latitude, longitude = _coordinates(soup)
+    return BranchDetails(
+        address=_address(soup) or _visiting_address(soup),
+        latitude=latitude,
+        longitude=longitude,
+        activities=[],
     )
