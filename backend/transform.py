@@ -3,7 +3,8 @@
     make transform
 
 `branches`    one row per local branch, for the map. Coordinates the site lacks come
-              from the geocode cache (`make geocode`); `location_source` says which.
+              from the geocode cache (`make geocode`, Kartverket place
+              names); `location_source` (site | kartverket | none) says which.
 `activities`  one row per activity, with a `category` for filtering
 """
 
@@ -92,13 +93,12 @@ def build_branches(
         result = (geocodes or {}).get(branch_query(row["branch"], row["district"]))
         if result is None or not result.found:
             continue
+        # A place-name match is not an address, so `address` is left as scraped.
         branches.loc[i, ["latitude", "longitude", "location_source"]] = [
             result.latitude,
             result.longitude,
-            "google",
+            "kartverket",
         ]
-        if not row["address"]:
-            branches.loc[i, "address"] = result.formatted_address
     branches["has_location"] = branches["location_source"] != "none"
     columns = [
         "district",

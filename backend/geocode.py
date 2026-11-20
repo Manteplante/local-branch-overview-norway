@@ -1,14 +1,12 @@
-"""Google geocoding for branches the site gives no coordinates for.
+"""Kartverket place-name geocoding for branches the site gives no coordinates for.
 
-    make geocode                                  # refuses: billable, needs the flag
-    GOOGLE_GEOCODING_CONFIRM=1 make geocode       # look up what isn't cached yet
+    make geocode                                  # look up what isn't cached yet
     uv run python -m backend.geocode --dry-run    # list the queries, no calls
 
+Uses Kartverket's free, keyless place-name API (stedsnavn, open data, "© Kartverket").
+A match is the centre of a town, village or municipality, not a street address.
 Results go to a committed cache (`config.GEOCODE_CACHE`); `make transform` reads only
 the cache and never calls the network. See docs/missing-data-quality.md.
-
-Spend guards: the key alone does nothing (GOOGLE_GEOCODING_CONFIRM=1 is also needed),
-MAX_GEOCODE_REQUESTS caps calls per run, and cached queries (misses too) cost 0.
 """
 
 from __future__ import annotations
@@ -30,99 +28,161 @@ from local_branch_overview.scraper.client import USER_AGENT
 
 from . import config
 
-API_URL = "https://maps.googleapis.com/maps/api/geocode/json"
-MIN_DELAY_SECONDS = 0.2
-PRICE_PER_1000_USD = 5.0  # after 10,000 free calls/month (2026)
+API_URL = "https://api.kartverket.no/stedsnavn/v1/navn"
+MIN_DELAY_SECONDS = 0.5  # no published rate limit; stay polite
+
+# Place types that stand for a settlement, best first. Churches, farms, fjords etc. are
+# skipped: "Flatanger" alone only matches the church, "Heim" a farm.
+PLACE_TYPES = [
+    "By",
+    "Tettsted",
+    "Bydel",
+    "Tettbebyggelse",
+    "Kommune",
+    "Bygdelag (bygd)",
+]
+_TYPE_RANK = {t: i for i, t in enumerate(PLACE_TYPES)}
+
+# Red Cross districts still use the pre-2024 county names; search the current county.
+# Rogaland district also covers Flekkefjord, which lies in Agder.
+COUNTY_NUMBERS: dict[str, tuple[str, ...]] = {
+    "Agder": ("42",),
+    "Akershus": ("32",),
+    "Buskerud": ("33",),
+    "Finnmark": ("56",),
+    "Hedmark": ("34",),
+    "Hordaland": ("46",),
+    "Møre og Romsdal": ("15",),
+    "Nordland": ("18",),
+    "Oppland": ("34",),
+    "Oslo": ("03",),
+    "Rogaland": ("11", "42"),
+    "Sogn og Fjordane": ("46",),
+    "Telemark": ("40",),
+    "Troms": ("55",),
+    "Trøndelag": ("50",),
+    "Vestfold": ("39",),
+    "Østfold": ("31",),
+}
 
 
 class GeocodeError(RuntimeError):
-    """A failed lookup. Its message never contains the API key."""
-
-
-class QuotaExceeded(GeocodeError):
-    """Google said OVER_QUERY_LIMIT / OVER_DAILY_LIMIT: stop the run, keep the results."""
+    """A failed request: stops the run; results fetched so far are kept."""
 
 
 @dataclass(frozen=True)
 class GeocodeResult:
     query: str
-    status: str  # OK | ZERO_RESULTS
+    status: str  # found | no_match
     latitude: float | None = None
     longitude: float | None = None
-    formatted_address: str = ""
-    location_type: str = (
-        ""  # ROOFTOP | RANGE_INTERPOLATED | GEOMETRIC_CENTER | APPROXIMATE
-    )
+    matched_name: str = ""
+    place_type: str = ""  # By | Tettsted | Bydel | Tettbebyggelse | Kommune | ...
+    municipality: str = ""
     fetched_at: str = ""
 
     @property
     def found(self) -> bool:
-        return self.status == "OK" and self.latitude is not None
+        return self.status == "found" and self.latitude is not None
 
 
-class GoogleGeocoder:
-    """One query → one `GeocodeResult`, restricted to Norway."""
+@dataclass(frozen=True)
+class Target:
+    query: str  # cache key, e.g. "Bagn, Oppland"
+    place: str  # "Bagn"
+    county_numbers: tuple[str, ...] = ()  # ("34",); empty searches all of Norway
+
+
+def _now() -> str:
+    return datetime.now(UTC).isoformat(timespec="seconds")
+
+
+def _has_point(name: dict) -> bool:
+    return bool(name.get("representasjonspunkt"))
+
+
+def _best_settlement(names: list[dict]) -> dict | None:
+    """The highest-ranked settlement; ties keep the API's order."""
+    candidates = [
+        n for n in names if n.get("navneobjekttype") in _TYPE_RANK and _has_point(n)
+    ]
+    return min(candidates, key=lambda n: _TYPE_RANK[n["navneobjekttype"]], default=None)
+
+
+def _municipality(names: list[dict], place: str) -> dict | None:
+    """ "<place> kommune" exactly, else the only municipality ending in it.
+
+    The exact name wins because "*Heim kommune" also matches Trondheim kommune.
+    """
+    municipalities = [
+        n for n in names if n.get("navneobjekttype") == "Kommune" and _has_point(n)
+    ]
+    exact = f"{place} kommune".casefold()
+    for n in municipalities:
+        if n.get("skrivemåte", "").casefold() == exact:
+            return n
+    return municipalities[0] if len(municipalities) == 1 else None
+
+
+class KartverketGeocoder:
+    """One branch target → one `GeocodeResult`, searched within its county."""
 
     def __init__(
         self,
-        api_key: str,
         *,
         session: requests.Session | None = None,
         sleep: Callable[[float], None] = time.sleep,
         timeout: float = 10,
     ) -> None:
-        if not api_key:
-            raise GeocodeError("GOOGLE_API_TOKEN is not set.")
-        self._key = api_key
         self.session = session or requests.Session()
         self.session.headers.update({"User-Agent": USER_AGENT})
         self.sleep = sleep
         self.timeout = timeout
 
-    def _redact(self, text: str) -> str:
-        return text.replace(self._key, "***")
-
-    def geocode(self, query: str) -> GeocodeResult:
+    def _search(self, text: str, county_numbers: tuple[str, ...]) -> list[dict]:
         self.sleep(MIN_DELAY_SECONDS)
-        params = {
-            "address": query,
-            "region": "no",
-            "components": "country:NO",
-            "language": "no",
-            "key": self._key,
-        }
+        params: dict = {"sok": text, "utkoordsys": "4258", "treffPerSide": "10"}
+        if county_numbers:
+            params["fnr"] = list(county_numbers)  # sent as fnr=11&fnr=42
         try:
             response = self.session.get(API_URL, params=params, timeout=self.timeout)
             response.raise_for_status()
-            payload = response.json()
-        except (requests.RequestException, ValueError) as exc:
-            # requests puts the full URL, key included, in its messages.
-            raise GeocodeError(self._redact(f"{query!r}: {exc}")) from None
+            names = response.json()["navn"]
+        except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
+            raise GeocodeError(f"{text!r}: {exc}") from None
+        return names if isinstance(names, list) else []
 
-        status = payload.get("status", "")
-        now = datetime.now(UTC).isoformat(timespec="seconds")
-        if status == "ZERO_RESULTS":
-            return GeocodeResult(query=query, status=status, fetched_at=now)
-        if status in {"OVER_QUERY_LIMIT", "OVER_DAILY_LIMIT"}:
-            raise QuotaExceeded(f"{status}: {payload.get('error_message', '')}")
-        if status != "OK" or not payload.get("results"):
-            message = self._redact(payload.get("error_message", ""))
-            raise GeocodeError(f"{query!r}: {status} {message}".strip())
-
-        best = payload["results"][0]
-        geometry = best["geometry"]
-        return GeocodeResult(
-            query=query,
-            status=status,
-            latitude=float(geometry["location"]["lat"]),
-            longitude=float(geometry["location"]["lng"]),
-            formatted_address=best.get("formatted_address", ""),
-            location_type=geometry.get("location_type", ""),
-            fetched_at=now,
+    def _lookup(self, place: str, county_numbers: tuple[str, ...]) -> dict | None:
+        """The place as a settlement, else as the one municipality named after it."""
+        return _best_settlement(self._search(place, county_numbers)) or (
+            _municipality(self._search(f"*{place} kommune", county_numbers), place)
         )
 
+    def geocode(self, target: Target) -> GeocodeResult:
+        # "Arna og Åsane" matches nothing as a whole; fall back to its first part.
+        names = [target.place]
+        if " og " in target.place:
+            names.append(target.place.split(" og ")[0])
+        for name in names:
+            hit = self._lookup(name, target.county_numbers)
+            if hit is None:
+                continue
+            point = hit["representasjonspunkt"]
+            municipalities = hit.get("kommuner") or [{}]
+            return GeocodeResult(
+                query=target.query,
+                status="found",
+                latitude=float(point["nord"]),
+                longitude=float(point["øst"]),
+                matched_name=hit.get("skrivemåte", ""),
+                place_type=hit.get("navneobjekttype", ""),
+                municipality=municipalities[0].get("kommunenavn", ""),
+                fetched_at=_now(),
+            )
+        return GeocodeResult(query=target.query, status="no_match", fetched_at=_now())
 
-# ── queries ───────────────────────────────────────────────────────────────────
+
+# ── targets ───────────────────────────────────────────────────────────────────
 
 _RED_CROSS = re.compile(r"\b(Røde Kors|Hjelpekorps)\b( i)?", re.IGNORECASE)
 # "Trøndelag – Nord" -> "Trøndelag", "Rogaland med Flekkefjord by" -> "Rogaland"
@@ -133,12 +193,19 @@ def _strip(name: str) -> str:
     return " ".join(_RED_CROSS.sub(" ", name).split())
 
 
-def branch_query(branch: str, district: str) -> str:
-    """ "Bagn Røde Kors" + "Oppland Røde Kors" -> "Bagn, Oppland, Norway"."""
+def branch_target(branch: str, district: str) -> Target:
+    """ "Bagn Røde Kors" + "Oppland Røde Kors" -> Target("Bagn, Oppland", "Bagn", ("34",))."""
     place = _strip(branch)
     county = _strip(_DISTRICT_SUFFIX.sub("", district))
-    parts = [place] + ([county] if county and county != place else []) + ["Norway"]
-    return ", ".join(parts)
+    query = ", ".join([place] + ([county] if county and county != place else []))
+    return Target(
+        query=query, place=place, county_numbers=COUNTY_NUMBERS.get(county, ())
+    )
+
+
+def branch_query(branch: str, district: str) -> str:
+    """The cache key for a branch: "Bagn, Oppland"."""
+    return branch_target(branch, district).query
 
 
 # ── cache ─────────────────────────────────────────────────────────────────────
@@ -184,47 +251,40 @@ class Summary:
     found: int = 0
     no_match: int = 0
     cached: int = 0
-    left: int = 0  # not looked up: request cap reached or quota exceeded
+
+
+def _uncached(targets: list[Target], cache: dict[str, GeocodeResult]) -> list[Target]:
+    unique = {t.query: t for t in targets}
+    return [t for q, t in unique.items() if q not in cache]
 
 
 def geocode_missing(
-    queries: list[str],
-    geocoder: GoogleGeocoder,
+    targets: list[Target],
+    geocoder: KartverketGeocoder,
     cache: dict[str, GeocodeResult],
     *,
-    max_requests: int,
     log: Callable[[str], None] = print,
 ) -> Summary:
-    """Look up the queries that aren't cached yet; results are added to `cache`."""
-    summary = Summary()
-    todo = [q for q in dict.fromkeys(queries) if q not in cache]
-    summary.cached = len(set(queries)) - len(todo)
-    for i, query in enumerate(todo, 1):
-        if i > max_requests:
-            summary.left = len(todo) - max_requests
-            log(f"  request cap ({max_requests}) reached, {summary.left} left")
-            break
-        try:
-            result = geocoder.geocode(query)
-        except QuotaExceeded as exc:
-            summary.left = len(todo) - i + 1
-            log(f"  ✗ quota exceeded, stopping: {exc}")
-            break
-        cache[query] = result
+    """Look up the targets that aren't cached yet; results are added to `cache`."""
+    todo = _uncached(targets, cache)
+    summary = Summary(cached=len({t.query for t in targets}) - len(todo))
+    for i, target in enumerate(todo, 1):
+        result = geocoder.geocode(target)
+        cache[target.query] = result
         if result.found:
             summary.found += 1
             log(
-                f"  [{i}/{len(todo)}] ✓ {query} → {result.formatted_address} "
-                f"({result.location_type})"
+                f"  [{i}/{len(todo)}] ✓ {target.query} → {result.matched_name} "
+                f"({result.place_type}, {result.municipality})"
             )
         else:
             summary.no_match += 1
-            log(f"  [{i}/{len(todo)}] ✗ {query}: no match")
+            log(f"  [{i}/{len(todo)}] ✗ {target.query}: no match")
     return summary
 
 
-def missing_queries() -> list[str]:
-    """Queries for every branch the scraped data has no coordinates for."""
+def missing_targets() -> list[Target]:
+    """Targets for every branch the scraped data has no coordinates for."""
     from . import transform  # transform imports this module
 
     raw = transform.read_raw()
@@ -232,7 +292,7 @@ def missing_queries() -> list[str]:
         return []
     branches = transform.build_branches(transform.build_activities(raw))
     missing = branches[~branches["has_location"]]
-    return [branch_query(b, d) for b, d in zip(missing.branch, missing.district)]
+    return [branch_target(b, d) for b, d in zip(missing.branch, missing.district)]
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -240,42 +300,34 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--dry-run", action="store_true", help="list queries, no calls")
     args = parser.parse_args(argv)
 
-    queries = missing_queries()
+    targets = missing_targets()
     cache = load_cache()
-    todo = [q for q in dict.fromkeys(queries) if q not in cache]
+    todo = _uncached(targets, cache)
     print(
-        f"[geocode] {len(queries)} branches without coordinates in {config.RAW_DIR}, "
+        f"[geocode] {len(targets)} branches without coordinates in {config.RAW_DIR}, "
         f"{len(todo)} not cached yet"
     )
     if args.dry_run:
-        for query in todo:
-            print(f"  {query}")
-        calls = min(len(todo), config.MAX_GEOCODE_REQUESTS)
-        print(
-            f"[geocode] dry run: would make {calls} calls "
-            f"(≈ ${calls * PRICE_PER_1000_USD / 1000:.2f} past the free tier)"
-        )
+        for target in todo:
+            print(
+                f"  {target.query}  (county {', '.join(target.county_numbers) or 'any'})"
+            )
         return
     if not todo:
         print("[geocode] Nothing to do.")
         return
-    if not config.GOOGLE_GEOCODING_CONFIRM:
-        raise SystemExit(
-            "[geocode] Billable: set GOOGLE_GEOCODING_CONFIRM=1 to call Google "
-            "(try --dry-run first)."
-        )
 
-    geocoder = GoogleGeocoder(config.GOOGLE_API_TOKEN)
     try:
-        summary = geocode_missing(
-            queries, geocoder, cache, max_requests=config.MAX_GEOCODE_REQUESTS
-        )
+        summary = geocode_missing(targets, KartverketGeocoder(), cache)
+    except GeocodeError as exc:
+        raise SystemExit(
+            f"[geocode] Stopped: {exc}. Results so far are saved; rerun to resume."
+        ) from None
     finally:
-        save_cache(cache)  # keep what we paid for, even if a call raised
+        save_cache(cache)
     print(
         f"[geocode] {summary.found} found, {summary.no_match} no match, "
-        f"{summary.cached} already cached, {summary.left} left · "
-        f"cache: {config.GEOCODE_CACHE}"
+        f"{summary.cached} already cached · cache: {config.GEOCODE_CACHE}"
     )
 
 

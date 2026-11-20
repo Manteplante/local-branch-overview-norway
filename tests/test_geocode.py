@@ -1,4 +1,4 @@
-"""Google geocoding with a fake session: no test touches the network or the real key."""
+"""Kartverket geocoding with a fake session: no test touches the network."""
 
 from pathlib import Path
 
@@ -7,32 +7,30 @@ import requests
 
 from backend import config, geocode
 from backend.geocode import (
+    COUNTY_NUMBERS,
     GeocodeError,
     GeocodeResult,
-    GoogleGeocoder,
-    QuotaExceeded,
+    KartverketGeocoder,
+    Target,
     branch_query,
+    branch_target,
     geocode_missing,
     load_cache,
     save_cache,
 )
 
-KEY = "AIza-test-key-123"
 
-
-def ok(lat: float = 61.0, lng: float = 9.1, address: str = "Bagn, Norge") -> dict:
+def place(name: str, kind: str, lat: float = 61.0, lng: float = 9.1) -> dict:
     return {
-        "status": "OK",
-        "results": [
-            {
-                "formatted_address": address,
-                "geometry": {
-                    "location": {"lat": lat, "lng": lng},
-                    "location_type": "APPROXIMATE",
-                },
-            }
-        ],
+        "skrivemåte": name,
+        "navneobjekttype": kind,
+        "kommuner": [{"kommunenavn": f"{name} kommune"}],
+        "representasjonspunkt": {"nord": lat, "øst": lng, "koordsys": 4258},
     }
+
+
+def names(*places: dict) -> dict:
+    return {"metadata": {"totaltAntallTreff": len(places)}, "navn": list(places)}
 
 
 class FakeResponse:
@@ -42,7 +40,7 @@ class FakeResponse:
 
     def raise_for_status(self) -> None:
         if self.status_code >= 400:
-            raise requests.HTTPError(f"{self.status_code} for url: ...&key={KEY}")
+            raise requests.HTTPError(f"{self.status_code} Server Error")
 
     def json(self) -> dict:
         return self.payload
@@ -51,7 +49,7 @@ class FakeResponse:
 class FakeSession(requests.Session):
     """Answers with queued payloads and records the params of each call."""
 
-    def __init__(self, *responses: FakeResponse | Exception) -> None:
+    def __init__(self, *responses: dict | FakeResponse | Exception) -> None:
         super().__init__()
         self.responses = list(responses)
         self.calls: list[dict] = []
@@ -61,90 +59,144 @@ class FakeSession(requests.Session):
         item = self.responses.pop(0)
         if isinstance(item, Exception):
             raise item
-        return item
+        return item if isinstance(item, FakeResponse) else FakeResponse(item)
 
 
-def geocoder(*responses: FakeResponse | Exception) -> GoogleGeocoder:
-    return GoogleGeocoder(KEY, session=FakeSession(*responses), sleep=lambda _: None)
+def geocoder(*responses: dict | FakeResponse | Exception) -> KartverketGeocoder:
+    return KartverketGeocoder(session=FakeSession(*responses), sleep=lambda _: None)
 
 
-def test_ok_result_is_parsed_and_restricted_to_norway() -> None:
-    g = geocoder(FakeResponse(ok()))
+BAGN = Target("Bagn, Oppland", "Bagn", ("34",))
 
-    result = g.geocode("Bagn, Oppland, Norway")
+
+# ── matching ──────────────────────────────────────────────────────────────────
+
+
+def test_picks_highest_ranked_settlement() -> None:
+    g = geocoder(
+        names(
+            place("Bagn", "Navnegard", 1, 1),
+            place("Bagn", "Tettsted", 60.82, 9.55),
+            place("Bagn", "Kommune", 2, 2),
+        )
+    )
+
+    result = g.geocode(BAGN)
 
     assert result.found
-    assert (result.latitude, result.longitude) == (61.0, 9.1)
-    assert result.formatted_address == "Bagn, Norge"
-    assert result.location_type == "APPROXIMATE"
-    params = g.session.calls[0]
-    assert params["components"] == "country:NO" and params["key"] == KEY
+    assert (result.latitude, result.longitude) == (60.82, 9.55)
+    assert (result.matched_name, result.place_type) == ("Bagn", "Tettsted")
+    assert result.municipality == "Bagn kommune"
+    assert g.session.calls == [
+        {"sok": "Bagn", "utkoordsys": "4258", "treffPerSide": "10", "fnr": ["34"]}
+    ]
 
 
-def test_zero_results_is_a_miss_not_an_error() -> None:
-    result = geocoder(FakeResponse({"status": "ZERO_RESULTS", "results": []})).geocode(
-        "Nowhere, Norway"
+def test_ties_keep_api_order() -> None:
+    g = geocoder(names(place("Bø", "Tettsted", 1, 1), place("Bø", "Tettsted", 2, 2)))
+    assert g.geocode(Target("Bø", "Bø", ("40",))).latitude == 1
+
+
+def test_falls_back_to_the_single_municipality() -> None:
+    g = geocoder(
+        names(place("Flatanger", "Kirke")),  # churches don't count
+        names(place("Flatanger kommune", "Kommune", 64.5, 10.8)),
     )
-    assert result.status == "ZERO_RESULTS" and not result.found
+
+    result = g.geocode(Target("Flatanger, Trøndelag", "Flatanger", ("50",)))
+
+    assert result.place_type == "Kommune" and result.latitude == 64.5
+    assert g.session.calls[1]["sok"] == "*Flatanger kommune"
+
+
+def test_rejects_ambiguous_municipality() -> None:
+    g = geocoder(
+        names(),
+        names(place("Nord-Aurdal kommune", "Kommune"), place("Sør-Aurdal kommune", "Kommune")),
+    )  # fmt: skip
+    assert g.geocode(Target("Aurdal", "Aurdal", ("34",))).status == "no_match"
+
+
+def test_exact_municipality_beats_suffix_matches() -> None:
+    g = geocoder(
+        names(place("Heim", "Gard")),
+        names(place("Trondheim kommune", "Kommune", 63.4, 10.4),
+              place("Heim kommune", "Kommune", 63.3, 9.1)),
+    )  # fmt: skip
+    result = g.geocode(Target("Heim, Trøndelag", "Heim", ("50",)))
+    assert (result.matched_name, result.latitude) == ("Heim kommune", 63.3)
+
+
+def test_og_names_fall_back_to_first_part() -> None:
+    g = geocoder(names(), names(), names(place("Arna", "Bydel", 60.42, 5.47)))
+
+    result = g.geocode(Target("Arna og Åsane, Hordaland", "Arna og Åsane", ("46",)))
+
+    assert result.matched_name == "Arna" and result.found
+    assert [c["sok"] for c in g.session.calls] == [
+        "Arna og Åsane",
+        "*Arna og Åsane kommune",
+        "Arna",
+    ]
+
+
+def test_no_match() -> None:
+    g = geocoder(names(), names())
+
+    result = g.geocode(Target("Nowhere", "Nowhere", ()))
+
+    assert result == GeocodeResult(
+        query="Nowhere", status="no_match", fetched_at=result.fetched_at
+    )
+    assert "fnr" not in g.session.calls[0]  # unknown county: search all of Norway
 
 
 @pytest.mark.parametrize(
     "response",
     [
-        FakeResponse({"status": "REQUEST_DENIED", "error_message": f"bad key {KEY}"}),
-        FakeResponse({}, status_code=403),
-        requests.ConnectionError(f"failed: https://maps.googleapis.com/?key={KEY}"),
+        FakeResponse({}, status_code=503),
+        FakeResponse({"unexpected": "shape"}),
+        requests.ConnectionError("down"),
     ],
 )
-def test_errors_never_contain_the_key(response) -> None:
-    with pytest.raises(GeocodeError) as exc:
-        geocoder(response).geocode("Bagn, Oppland, Norway")
-    assert KEY not in str(exc.value)
-    assert exc.value.__cause__ is None  # the original (with the key) is not chained
+def test_request_errors_raise(response: FakeResponse | Exception) -> None:
+    with pytest.raises(GeocodeError, match="Bagn"):
+        geocoder(response).geocode(BAGN)
 
 
-def test_missing_key_is_rejected() -> None:
-    with pytest.raises(GeocodeError, match="GOOGLE_API_TOKEN"):
-        GoogleGeocoder("")
+# ── run ───────────────────────────────────────────────────────────────────────
 
 
-def test_cap_stops_and_keeps_results() -> None:
-    g = geocoder(FakeResponse(ok()), FakeResponse(ok()))
-    cache: dict[str, GeocodeResult] = {}
+def test_geocode_missing_skips_cached_and_duplicates() -> None:
+    g = geocoder(names(place("Bagn", "Tettsted")), names(), names())
+    cached = GeocodeResult(
+        query="Bryne, Rogaland", status="found", latitude=1, longitude=1
+    )
+    cache = {"Bryne, Rogaland": cached}
+    targets = [
+        BAGN,
+        BAGN,
+        Target("Bryne, Rogaland", "Bryne", ("11", "42")),
+        Target("X", "X", ()),
+    ]
 
-    summary = geocode_missing(["a", "b", "c"], g, cache, max_requests=2, log=str)
+    summary = geocode_missing(targets, g, cache, log=str)
 
-    assert sorted(cache) == ["a", "b"]
-    assert (summary.found, summary.left) == (2, 1)
-
-
-def test_cached_queries_are_not_requested_again() -> None:
-    g = geocoder(FakeResponse(ok()))
-    cache = {"a": GeocodeResult(query="a", status="ZERO_RESULTS")}
-
-    summary = geocode_missing(["a", "a", "b"], g, cache, max_requests=10, log=str)
-
-    assert [c["address"] for c in g.session.calls] == ["b"]
-    assert (summary.cached, summary.found) == (1, 1)
-
-
-def test_quota_exceeded_stops_the_run() -> None:
-    g = geocoder(FakeResponse(ok()), FakeResponse({"status": "OVER_QUERY_LIMIT"}))
-    cache: dict[str, GeocodeResult] = {}
-
-    summary = geocode_missing(["a", "b", "c"], g, cache, max_requests=10, log=str)
-
-    assert list(cache) == ["a"] and summary.left == 2
-    with pytest.raises(QuotaExceeded):
-        geocoder(FakeResponse({"status": "OVER_DAILY_LIMIT"})).geocode("x")
+    assert (summary.found, summary.no_match, summary.cached) == (1, 1, 1)
+    assert cache["X"].status == "no_match"  # misses are cached: never asked again
+    assert len(g.session.calls) == 3
+    assert g.session.responses == []  # fmt: skip
 
 
 def test_cache_round_trip(tmp_path: Path) -> None:
     path = tmp_path / "cache.csv"
     cache = {
-        "b": GeocodeResult(query="b", status="ZERO_RESULTS", fetched_at="t"),
-        "a": GeocodeResult(query="a", status="OK", latitude=1.5, longitude=2.5),
-    }
+        "b": GeocodeResult(query="b", status="no_match", fetched_at="t"),
+        "a": GeocodeResult(
+            query="a", status="found", latitude=1.5, longitude=2.5,
+            matched_name="A", place_type="By", municipality="A kommune",
+        ),
+    }  # fmt: skip
 
     save_cache(cache, path)
 
@@ -154,41 +206,87 @@ def test_cache_round_trip(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    ("branch", "district", "query"),
+    ("branch", "district", "target"),
     [
-        ("Bagn Røde Kors", "Oppland Røde Kors", "Bagn, Oppland, Norway"),
-        ("Flatanger", "Røde Kors i Trøndelag – Nord", "Flatanger, Trøndelag, Norway"),
-        ("Oslo Røde Kors", "Oslo Røde Kors", "Oslo, Norway"),
+        (
+            "Bagn Røde Kors",
+            "Oppland Røde Kors",
+            Target("Bagn, Oppland", "Bagn", ("34",)),
+        ),
+        (
+            "Flatanger",
+            "Røde Kors i Trøndelag – Nord",
+            Target("Flatanger, Trøndelag", "Flatanger", ("50",)),
+        ),
+        ("Oslo Røde Kors", "Oslo Røde Kors", Target("Oslo", "Oslo", ("03",))),
         (
             "Bryne Røde Kors",
             "Rogaland Røde Kors med Flekkefjord by",
-            "Bryne, Rogaland, Norway",
+            Target("Bryne, Rogaland", "Bryne", ("11", "42")),
         ),
         (
             "Brumunddal Røde Kors Hjelpekorps",
             "Hedmark Røde Kors",
-            "Brumunddal, Hedmark, Norway",
+            Target("Brumunddal, Hedmark", "Brumunddal", ("34",)),
         ),
         (
             "Arna og Åsane Røde Kors",
             "Hordaland Røde Kors",
-            "Arna og Åsane, Hordaland, Norway",
+            Target("Arna og Åsane, Hordaland", "Arna og Åsane", ("46",)),
         ),
+        ("Foo Røde Kors", "Atlantis Røde Kors", Target("Foo, Atlantis", "Foo", ())),
     ],
 )
-def test_branch_query(branch: str, district: str, query: str) -> None:
-    assert branch_query(branch, district) == query
+def test_branch_target(branch: str, district: str, target: Target) -> None:
+    assert branch_target(branch, district) == target
+    assert branch_query(branch, district) == target.query
 
 
-def test_main_refuses_without_confirm(
+# Every district on rodekors.no (data/sample, 2026-11) maps to a county number.
+SITE_DISTRICTS = [
+    "Agder Røde Kors", "Akershus Røde Kors", "Buskerud Røde Kors", "Finnmark Røde Kors",
+    "Hedmark Røde Kors", "Hordaland Røde Kors", "Møre og Romsdal Røde Kors",
+    "Nordland Røde Kors", "Oppland Røde Kors", "Oslo Røde Kors",
+    "Rogaland Røde Kors med Flekkefjord by", "Røde Kors i Trøndelag – Nord",
+    "Røde Kors i Trøndelag – Sør", "Sogn og Fjordane Røde Kors", "Telemark Røde Kors",
+    "Troms Røde Kors", "Vestfold Røde Kors", "Østfold Røde Kors",
+]  # fmt: skip
+
+
+@pytest.mark.parametrize("district", SITE_DISTRICTS)
+def test_every_site_district_has_a_county(district: str) -> None:
+    numbers = branch_target("X", district).county_numbers
+    assert numbers and numbers in COUNTY_NUMBERS.values()
+
+
+def test_dry_run_makes_no_calls(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(geocode, "missing_queries", lambda: ["Bagn, Oppland, Norway"])
+    monkeypatch.setattr(geocode, "missing_targets", lambda: [BAGN])
     monkeypatch.setattr(config, "GEOCODE_CACHE", tmp_path / "cache.csv")
-    monkeypatch.setattr(config, "GOOGLE_GEOCODING_CONFIRM", False)
-    monkeypatch.setattr(config, "GOOGLE_API_TOKEN", KEY)
 
-    with pytest.raises(SystemExit, match="GOOGLE_GEOCODING_CONFIRM=1"):
-        geocode.main([])
-    geocode.main(["--dry-run"])  # fine without the flag, makes no calls
+    def no_network(*args, **kwargs):
+        raise AssertionError("dry run must not call Kartverket")
+
+    monkeypatch.setattr(geocode, "KartverketGeocoder", no_network)
+
+    geocode.main(["--dry-run"])
     assert not (tmp_path / "cache.csv").exists()
+
+
+def test_main_saves_results_before_stopping_on_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    second = Target("Bryne, Rogaland", "Bryne", ("11", "42"))
+    monkeypatch.setattr(geocode, "missing_targets", lambda: [BAGN, second])
+    monkeypatch.setattr(config, "GEOCODE_CACHE", tmp_path / "cache.csv")
+    session = FakeSession(names(place("Bagn", "Tettsted")), requests.Timeout("slow"))
+    monkeypatch.setattr(
+        geocode,
+        "KartverketGeocoder",
+        lambda: KartverketGeocoder(session=session, sleep=lambda _: None),
+    )
+
+    with pytest.raises(SystemExit, match="rerun to resume"):
+        geocode.main([])
+    assert set(load_cache(tmp_path / "cache.csv")) == {"Bagn, Oppland"}

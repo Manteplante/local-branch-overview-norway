@@ -18,11 +18,11 @@ How tests, CI/CD, hooks, dependencies and releases fit together. `Makefile` is t
 
 - Before finishing plumbing changes, run `make ci`, and `make pre-commit` if hooks changed.
 - Pin GitHub Actions to a commit SHA with a `# vX.Y.Z` comment.
-- CI and tests never get `GOOGLE_API_TOKEN`. Geocoding tests use a fake session (`tests/test_geocode.py`); no test may call Google.
+- Geocoding tests use a fake session (`tests/test_geocode.py`); no test may call Kartverket or any other network service.
 - Commit prefixes drive releases: `feat:` is minor, `fix:` is patch, `feat!:` is major. `docs:`, `test:`, `ci:` and `chore:` alone make no release.
 
 ## Known gaps
 
-- Branch addresses are gone from rodekors.no and many branches lack coordinates. `make geocode` fills coordinates via Google; see `docs/missing-data-quality.md`.
+- Branch addresses are gone from rodekors.no and many branches lack coordinates. `make geocode` fills coordinates from Kartverket place names; see `docs/missing-data-quality.md`.
 - Release PRs get no CI run, because pushes made with `GITHUB_TOKEN` do not trigger workflows. If `main` requires the CI check, these PRs cannot merge until the workflow uses a PAT or GitHub App token.
 - release-please needs the repo setting "Allow GitHub Actions to create and approve pull requests".

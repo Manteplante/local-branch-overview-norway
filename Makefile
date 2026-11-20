@@ -52,7 +52,7 @@ scrape: ## Scrape all districts to data/raw (slow, ~2-3 h, resumable)
 scrape-sample: ## Test scrape: <=2 branches per district to data/sample (~10 min)
 	uv run scrape-branches --limit-branches 2 --out data/sample
 
-geocode: ## Geocode branches without coordinates via Google (billable; GOOGLE_GEOCODING_CONFIRM=1)
+geocode: ## Geocode branches without coordinates via Kartverket place names (free)
 	uv run python -m backend.geocode
 
 transform: ## Build the app tables in data/tables from data/raw
