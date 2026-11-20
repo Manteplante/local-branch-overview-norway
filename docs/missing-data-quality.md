@@ -1,6 +1,6 @@
 # Missing addresses and coordinates
 
-Status: **Google geocoding is built** (`make geocode`, `backend/geocode.py`). The other
+Status: **Kartverket place-name geocoding is built** (`make geocode`, `backend/geocode.py`). The other
 steps below are still a plan. Read this before touching geocoding, addresses or
 coordinates in `backend/transform.py`, the scraper or the map.
 
@@ -26,32 +26,44 @@ Around November 2026, rodekors.no stopped publishing branch addresses. Found dur
 - **Fill in missing data in `backend/transform.py`, not in the scraper.** Changes to the
   geocoding logic must not need a 2–3 h re-scrape.
 
-- **Geocode with Google, and commit the results** (decided by the repo owner, 2026-11-11).
-  Google Maps Platform terms appear to restrict showing Geocoding API results on a non-Google
-  map (ours uses Kartverket tiles), caching them for long, and redistributing them. The owner
-  accepted that risk. If it becomes a problem, switch to Kartverket or Nominatim (open data,
-  attribution required) and delete `data/geocode_cache.csv`.
+- **Geocode with Kartverket place names, and commit the results** (2026-11-20; replaces
+  the Google geocoder from 2026-11-11). Free and needs no key. It is open data, so caching
+  and committing the results is fine. The required "© Kartverket" attribution is already on
+  the map (`backend/mapview.py`). Google was dropped because it is billable and its terms
+  restrict showing results on a non-Google map and redistributing them.
 
 ## How it works now
 
-- `make geocode` builds the branch list from `RAW_DIR`, takes the branches without site
-  coordinates and queries `"<place>, <county>, Norway"` (`branch_query`). The query is
-  restricted to Norway (`components=country:NO`).
-- Results, misses included, go to the committed cache `data/geocode_cache.csv`.
-  `make transform` reads only the cache, never the network, and sets `location_source` to
-  `site` / `google` / `none`. Site coordinates always win.
-- Spend guards: `GOOGLE_API_TOKEN` alone does nothing, `GOOGLE_GEOCODING_CONFIRM=1` is also
-  needed. `MAX_GEOCODE_REQUESTS` (default 100) caps calls per run, cached queries cost 0, and
-  `--dry-run` lists the queries without calling anything.
-- The key is read only in `backend/config.py` and is removed from every error message.
-  Tests use a fake session; CI never gets the key.
+- `make geocode` builds the branch list from `RAW_DIR` and takes the branches without
+  site coordinates. Each one becomes a `Target` (`branch_target`): the place (branch name
+  without "Røde Kors"), the cache key `"<place>, <county>"`, and the current county
+  number(s). Red Cross districts use pre-2024 county names, so `COUNTY_NUMBERS` maps them,
+  e.g. Oppland → 34 Innlandet. Rogaland → `11,42` because it includes Flekkefjord.
+- It searches `https://api.kartverket.no/stedsnavn/v1/navn` within that county, waiting
+  0.5 s between requests and sending the scraper's `User-Agent`:
+  1. `<place>`: the best settlement by type, `By > Tettsted > Bydel > Tettbebyggelse >
+     Kommune > Bygdelag (bygd)`. Churches, farms, fjords etc. are ignored.
+  2. Else `*<place> kommune`: the exact `<place> kommune` if listed (Heim, not
+     Trondheim), otherwise only when exactly one municipality matches
+     (Flatanger, Gauldal → Midtre Gauldal).
+  3. Else, for "X og Y" names, steps 1–2 with "X" (Arna og Åsane → Arna, Bø og Sauherad → Bø).
+  4. Else a miss.
+  On `data/sample` (2026-11-20) this matched all 22 branches without site coordinates.
+- A match is the centre of a town or municipality, **not an address**, so `address` stays
+  as scraped.
+- Results, misses included, go to the committed cache `data/geocode_cache.csv`. Columns:
+  `matched_name`, `place_type`, `municipality`. `make transform` reads only the cache, never
+  the network, and sets `location_source` to `site` / `kartverket` / `none`. Site
+  coordinates always win.
+- `--dry-run` lists the queries without calling anything. A request error stops the run
+  after saving what was found; rerun to resume. Tests use a fake session.
 
 ## Plan: from most to least precise
 
 | Step | Applies to | Method | Precision | `location_source` |
 |---|---|---|---|---|
 | 1 | Has site coordinates | Keep them. Address via reverse geocoding: Kartverket `https://ws.geonorge.no/adresser/v1/punktsok` | exact | `site` (+ `reverse` for address) |
-| 2 | No coordinates | **Built, with Google instead of Kartverket**: place-name geocoding via `make geocode` (`https://ws.geonorge.no/stedsnavn/v1/navn` is the open alternative) | place or village centre | `google` |
+| 2 | No coordinates | **Built**: Kartverket place-name geocoding via `make geocode` (`https://api.kartverket.no/stedsnavn/v1/navn`) | place or village centre | `kartverket` |
 | 3 | Still missing | Fill in by hand in a committed `data/overrides.csv` (`branch_slug, address, latitude, longitude`). Overrides beat every other source | exact | `manual` |
 | — | Nothing found | Keep the branch in the activity tables; leave it off the map | — | `none` |
 
@@ -72,8 +84,9 @@ Supporting pieces:
 
 ## Open questions
 
-- Rate limits and terms of use for the Kartverket APIs were not checked. Check before
-  building, and send the same `User-Agent` as the scraper.
-- Regional names like "Arna og Åsane" or "Bø og Sauherad" match no single place. Try the
-  first part, then the municipality, then `manual`.
+- Kartverket publishes no rate limit for stedsnavn (no key or login is needed). We stay at
+  ≤ 2 requests/s. Breaking API changes are announced 3 months ahead on
+  https://status.kartverket.no. Before relying on `punktsok` (step 1), check its terms.
+- Regional names are handled by the "X og Y" fallback above. A branch that still misses
+  goes to `data/overrides.csv` (step 3).
 - Rerun `make fixtures` so the tests use pages without addresses.

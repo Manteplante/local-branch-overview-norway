@@ -34,9 +34,5 @@ ASSETS_DIR = _dir("ASSETS_DIR", "assets")
 #   xlsx     only when a human needs to open it in Excel (needs openpyxl)
 FILE_FORMAT = _text("FILE_FORMAT", "csv").strip(".").lower()
 
-# Geocoding (`make geocode`, see docs/missing-data-quality.md). Billable: it only calls
-# Google when the key is set *and* GOOGLE_GEOCODING_CONFIRM=1.
-GOOGLE_API_TOKEN = _text("GOOGLE_API_TOKEN")
-GOOGLE_GEOCODING_CONFIRM = _text("GOOGLE_GEOCODING_CONFIRM") == "1"
-MAX_GEOCODE_REQUESTS = int(_text("MAX_GEOCODE_REQUESTS", "100"))
+# Geocoding (`make geocode`, Kartverket place names; see docs/missing-data-quality.md).
 GEOCODE_CACHE = _dir("GEOCODE_CACHE", "data/geocode_cache.csv")  # committed
