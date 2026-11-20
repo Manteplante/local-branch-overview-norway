@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.0.0](https://github.com/Manteplante/local-branch-overview/compare/v0.4.0...v1.0.0) (2026-11-20)
+
+
+### ⚠ BREAKING CHANGES
+
+* geocode with Kartverket place names instead of Google
+
+### Features
+
+* add sample scrape target, Oslo support and progress output ([ff0bad6](https://github.com/Manteplante/local-branch-overview/commit/ff0bad624bdd3d67e3060562bf96e5798f7bb7ca))
+* geocode branches without coordinates via Google ([bd606a9](https://github.com/Manteplante/local-branch-overview/commit/bd606a9ed605b1b79ab0497d5947baf17ba0509a))
+* geocode with Kartverket place names instead of Google ([a09243c](https://github.com/Manteplante/local-branch-overview/commit/a09243c61826d09a97d484111c029eee5abd186b))
+
+
+### Documentation
+
+* plan for missing branch addresses and coordinates ([bd5990b](https://github.com/Manteplante/local-branch-overview/commit/bd5990ba84950c28b4163deea0ff1a934119f306))
+
 ## [0.4.0](https://github.com/Manteplante/local-branch-overview/compare/v0.3.0...v0.4.0) (2026-11-10)
 
 
