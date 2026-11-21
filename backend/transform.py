@@ -56,6 +56,20 @@ def build_activities(raw: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def placeholder_coordinates(branches: pd.DataFrame) -> pd.Series:
+    """Site coordinates that are a stand-in, not the branch's location.
+
+    rodekors.no puts some branches without a map location at one shared point in
+    central Oslo (59.9155, 10.7578: Karasjok, Nordkapp, Bø, Siljan in 2026-11). Real
+    offices in *different* districts never share exact coordinates, so such points are
+    treated as missing and the branch is geocoded like the rest.
+    """
+    has = branches["latitude"].notna() & branches["longitude"].notna()
+    point = branches["latitude"].astype(str) + "," + branches["longitude"].astype(str)
+    districts = branches[has].groupby(point[has])["district_slug"].nunique()
+    return has & point.map(districts).gt(1)
+
+
 def build_branches(
     activities: pd.DataFrame,
     geocodes: dict[str, GeocodeResult] | None = None,
@@ -89,6 +103,8 @@ def build_branches(
         .apply(summarize, include_groups=False)
         .reset_index()
     )
+    placeholder = placeholder_coordinates(branches)
+    branches.loc[placeholder, ["latitude", "longitude"]] = float("nan")
     site = branches["latitude"].notna() & branches["longitude"].notna()
     branches["location_source"] = site.map({True: "site", False: "none"})
     for i in branches.index[~site]:

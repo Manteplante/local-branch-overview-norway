@@ -615,3 +615,20 @@ def test_exact_street_name_beats_other_streets_with_the_stem() -> None:
         address_hit("Brugata", 3, "A", lat=2),
     )
     assert geocoder(hits).geocode(target).latitude == 2
+
+
+def test_hamlet_loses_to_municipality_of_the_same_name() -> None:
+    g = geocoder(
+        names(place("Bø", "Bygdelag (bygd)", 67.9, 15.2)),  # in Steigen
+        names(place("Bø kommune", "Kommune", 68.7, 14.5)),  # Vesterålen
+    )
+
+    result = g.geocode(Target("Bø, Nordland", "Bø", ("18",)))
+
+    assert (result.matched_name, result.latitude) == ("Bø kommune", 68.7)
+    assert g.session.calls[1]["sok"] == "Bø kommune"
+
+
+def test_hamlet_is_kept_without_a_namesake_municipality() -> None:
+    g = geocoder(names(place("Olden", "Bygdelag (bygd)", 61.8, 6.8)), names())
+    assert g.geocode(Target("Olden", "Olden", ("46",))).matched_name == "Olden"
