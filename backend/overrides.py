@@ -1,6 +1,7 @@
 """Hand-entered branch locations for what neither the site nor Kartverket could place.
 
     make overrides      # add every branch still without a location to the file
+                        # (and drop empty rows for branches located since)
     # ...fill in latitude/longitude in data/overrides.csv, then:
     make transform      # filled rows win over every other source (location_source=manual)
 
@@ -103,13 +104,26 @@ def unknown_keys(overrides: pd.DataFrame, branches: pd.DataFrame) -> list[tuple]
     ]
 
 
-def seed(branches: pd.DataFrame, path: Path | None = None) -> int:
+def seed(branches: pd.DataFrame, path: Path | None = None) -> tuple[int, int]:
     """Add a row with empty coordinates for each branch still without a location.
 
-    Existing rows are never changed or reordered. Returns how many rows were added.
+    Empty rows for branches that have a location by now (e.g. geocoding improved) are
+    dropped; filled rows are never changed, and the order is kept.
+    Returns (rows added, empty rows dropped).
     """
     path = path or config.OVERRIDES
     existing = _read(path)
+    located = branches[branches["location_source"] != "none"]
+    located_keys = set(zip(located.district_slug, located.branch_slug))
+    stale = [
+        not (lat or lon) and key in located_keys
+        for lat, lon, key in zip(
+            existing.latitude,
+            existing.longitude,
+            zip(existing.district_slug, existing.branch_slug),
+        )
+    ]
+    existing = existing.loc[[not s for s in stale]]
     listed = set(zip(existing.district_slug, existing.branch_slug))
     missing = branches[branches["location_source"] == "none"]
     new = (
@@ -119,10 +133,11 @@ def seed(branches: pd.DataFrame, path: Path | None = None) -> int:
         .assign(latitude="", longitude="", note="")[COLUMNS]
         .sort_values(KEY)
     )
-    if new.empty and path.exists():
-        return 0
+    dropped = sum(stale)
+    if new.empty and not dropped and path.exists():
+        return 0, 0
     _write(pd.concat([existing, new], ignore_index=True), path)
-    return len(new)
+    return len(new), dropped
 
 
 def _write(df: pd.DataFrame, path: Path) -> None:
@@ -149,11 +164,12 @@ def main() -> None:
         return
     # Without overrides: "still without a location" after site + Kartverket.
     branches = transform.build_branches(transform.build_activities(raw), load_cache())
-    added = seed(branches)
+    added, dropped = seed(branches)
     rows = _read(config.OVERRIDES)
     empty = int(((rows.latitude == "") & (rows.longitude == "")).sum())
     print(
-        f"[overrides] Added {added} branches to {config.OVERRIDES} · "
+        f"[overrides] Added {added} branches to {config.OVERRIDES}, dropped {dropped} "
+        "empty rows for branches that have a location now · "
         f"{empty} of {len(rows)} rows still need latitude/longitude"
     )
 

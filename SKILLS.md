@@ -23,6 +23,6 @@ How tests, CI/CD, hooks, dependencies and releases fit together. `Makefile` is t
 
 ## Known gaps
 
-- Branch addresses are gone from rodekors.no and many branches lack coordinates. `make geocode` fills coordinates from Kartverket place names; see `docs/missing-data-quality.md`.
+- Most branches have an address on rodekors.no but no coordinates. `make geocode` fills them from Kartverket (street address, else place name), and `make overrides` covers the rest by hand; see `docs/missing-data-quality.md`.
 - Release PRs get no CI run, because pushes made with `GITHUB_TOKEN` do not trigger workflows. If `main` requires the CI check, these PRs cannot merge until the workflow uses a PAT or GitHub App token.
 - release-please needs the repo setting "Allow GitHub Actions to create and approve pull requests".
