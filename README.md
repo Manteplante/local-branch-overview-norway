@@ -13,6 +13,7 @@ is and what it does.
 - [Refreshing the data](#refreshing-the-data)
 - [Project layout](#project-layout)
 - [Sources and credits](#sources-and-credits)
+- [Disclaimer](#disclaimer)
 - [More docs](#more-docs)
 - [License](#license)
 
@@ -159,6 +160,18 @@ docs/                   Cheat sheet and the data-quality notes
   “Create an a PNG image 1920×1080 pixels of a fiord, cascades running down steep
   mountains, and a small town in the mouth of the river that meets the fiord, using the
   creative style of classic 90s disney movie”.
+
+## Disclaimer
+
+**Public information only.** Everything in this repo and the app, including names and
+contact details in activity descriptions, has already been published by the Norwegian Red
+Cross on [rodekors.no](https://www.rodekors.no/lokalforeninger/). This project only
+gathers it in one place; it adds no private data.
+
+- rodekors.no is the authoritative source. The copy here may be outdated, and
+  corrections belong on rodekors.no.
+- This is an independent project, not made by or affiliated with the Red Cross.
+- Want something removed from this project? [Open an issue](https://github.com/Manteplante/local-branch-overview/issues).
 
 ## More docs
 

@@ -111,6 +111,16 @@ with thanks.container(border=True):
         "[Leaflet](https://leafletjs.com/)."
     )
 
+st.info(
+    "**Disclaimer: public information only.** Everything shown here, including names "
+    "and contact details in activity descriptions, has already been published by the "
+    f"Norwegian Red Cross on [rodekors.no]({RODEKORS}). This project only gathers it "
+    "in one place; it adds no private data. rodekors.no is the authoritative source: "
+    "information may be outdated here, and corrections belong there. Want something "
+    f"removed from this project? [Open an issue on GitHub]({REPO}/issues).",
+    icon=":material/info:",
+)
+
 image = front_image()
 if image:
     st.image(image, width="stretch")

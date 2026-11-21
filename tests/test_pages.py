@@ -88,6 +88,7 @@ def test_home_explains_sources_quality_and_credits(with_tables: None) -> None:
     assert "Kartverket" in text and "geocoding" in text
     assert "not made by or affiliated with" in text
     assert "see what it does" in text and "Annet" in text
+    assert any("public information only" in i.value.lower() for i in at.info)
     assert any("OpenAI" in c.value for c in at.caption)
     # data-quality numbers come from the tables: 1 located at the site, 2 without
     assert "1 branches are placed exactly" in text

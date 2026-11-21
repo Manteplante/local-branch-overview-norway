@@ -1,2 +1,1 @@
-def main() -> None:
-    print("Hello from local-branch-overview!")
+"""The rodekors.no scraper (`make scrape`); see `local_branch_overview.scraper`."""
