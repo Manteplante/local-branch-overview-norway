@@ -17,6 +17,8 @@ make scrape-sample     # test scrape: <=2 branches per district to data/sample/ 
 make geocode           # Kartverket place-name lookup for branches without coordinates
                        #   -> data/geocode_cache.csv (free, no key; --dry-run lists queries)
 make geocode-retry     # look up cached misses again (after changing the matcher)
+make overrides         # add branches still without a location to data/overrides.csv;
+                       #   fill in latitude/longitude by hand, then make transform
 make transform         # data/raw -> data/tables (what the app reads; committed)
 # List more make commands as project grows here
 ```

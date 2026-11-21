@@ -49,6 +49,7 @@ def tables_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.setattr(config, "TABLES_DIR", tmp_path / "tables")
     monkeypatch.setattr(config, "RAW_DIR", tmp_path / "raw")
     monkeypatch.setattr(config, "GEOCODE_CACHE", tmp_path / "geocode_cache.csv")
+    monkeypatch.setattr(config, "OVERRIDES", tmp_path / "overrides.csv")
     return tmp_path
 
 
@@ -138,6 +139,38 @@ def test_geocodes_fill_only_missing_coordinates() -> None:
     assert grimstad.location_source == "kartverket" and bool(grimstad.has_location)
     assert grimstad.address == "Frivoldveien 11, 4877 GRIMSTAD"  # site address kept
     assert by_slug.loc["flatanger", "location_source"] == "none"
+
+
+def test_manual_overrides_beat_every_source() -> None:
+    geocodes = {
+        "Grimstad, Agder": GeocodeResult(
+            query="Grimstad, Agder", status="found", latitude=58.34, longitude=8.59
+        )
+    }
+    manual = pd.DataFrame(
+        [
+            {"district_slug": "agder", "branch_slug": "arendal",  # beats site
+             "latitude": 58.5, "longitude": 8.8},
+            {"district_slug": "agder", "branch_slug": "grimstad",  # beats kartverket
+             "latitude": 58.3, "longitude": 8.6},
+            {"district_slug": "trondelag-nord", "branch_slug": "flatanger",  # fills none
+             "latitude": 64.5, "longitude": 10.9},
+        ]
+    )  # fmt: skip
+
+    branches = transform.build_tables(raw_rows(), geocodes, manual)["branches"]
+
+    by_slug = branches.set_index("branch_slug")
+    assert set(by_slug.location_source) == {"manual"}
+    assert by_slug.has_location.all()
+    assert (
+        by_slug.loc["flatanger", "latitude"],
+        by_slug.loc["flatanger", "longitude"],
+    ) == (
+        64.5,
+        10.9,
+    )
+    assert by_slug.loc["arendal", "latitude"] == 58.5
 
 
 def test_run_writes_tables_and_skips_without_raw(tables_dir: Path) -> None:

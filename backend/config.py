@@ -36,3 +36,5 @@ FILE_FORMAT = _text("FILE_FORMAT", "csv").strip(".").lower()
 
 # Geocoding (`make geocode`, Kartverket place names; see docs/missing-data-quality.md).
 GEOCODE_CACHE = _dir("GEOCODE_CACHE", "data/geocode_cache.csv")  # committed
+# Hand-entered locations (`make overrides`), they beat every other source.
+OVERRIDES = _dir("OVERRIDES", "data/overrides.csv")  # committed
