@@ -16,6 +16,7 @@ make scrape            # scrape all districts to data/raw/<district>.csv (~2-3 h
 make scrape-sample     # test scrape: <=2 branches per district to data/sample/ (~10 min)
 make geocode           # Kartverket place-name lookup for branches without coordinates
                        #   -> data/geocode_cache.csv (free, no key; --dry-run lists queries)
+make geocode-retry     # look up cached misses again (after changing the matcher)
 make transform         # data/raw -> data/tables (what the app reads; committed)
 # List more make commands as project grows here
 ```

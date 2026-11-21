@@ -1,6 +1,7 @@
 """Kartverket place-name geocoding for branches the site gives no coordinates for.
 
     make geocode                                  # look up what isn't cached yet
+    make geocode-retry                            # ... and the cached misses again
     uv run python -m backend.geocode --dry-run    # list the queries, no calls
 
 Uses Kartverket's free, keyless place-name API (stedsnavn, open data, "© Kartverket").
@@ -31,6 +32,8 @@ from . import config
 API_URL = "https://api.kartverket.no/stedsnavn/v1/navn"
 MIN_DELAY_SECONDS = 0.5  # no published rate limit; stay polite
 
+FORMER_MUNICIPALITY = "Annen administrativ inndeling"  # Skedsmo, Voss, Os, ...
+
 # Place types that stand for a settlement, best first. Churches, farms, fjords etc. are
 # skipped: "Flatanger" alone only matches the church, "Heim" a farm.
 PLACE_TYPES = [
@@ -40,11 +43,14 @@ PLACE_TYPES = [
     "Tettbebyggelse",
     "Kommune",
     "Bygdelag (bygd)",
+    FORMER_MUNICIPALITY,
 ]
 _TYPE_RANK = {t: i for i, t in enumerate(PLACE_TYPES)}
 
 # Red Cross districts still use the pre-2024 county names; search the current county.
-# Rogaland district also covers Flekkefjord, which lies in Agder.
+# Some districts reach past their old county: Rogaland covers Flekkefjord (Agder),
+# Oppland Jevnaker and Lunner (now Akershus), Trøndelag Surnadal (Møre og Romsdal),
+# Troms Longyearbyen (Svalbard).
 COUNTY_NUMBERS: dict[str, tuple[str, ...]] = {
     "Agder": ("42",),
     "Akershus": ("32",),
@@ -54,13 +60,13 @@ COUNTY_NUMBERS: dict[str, tuple[str, ...]] = {
     "Hordaland": ("46",),
     "Møre og Romsdal": ("15",),
     "Nordland": ("18",),
-    "Oppland": ("34",),
+    "Oppland": ("34", "32"),
     "Oslo": ("03",),
     "Rogaland": ("11", "42"),
     "Sogn og Fjordane": ("46",),
     "Telemark": ("40",),
-    "Troms": ("55",),
-    "Trøndelag": ("50",),
+    "Troms": ("55", "21"),
+    "Trøndelag": ("50", "15"),
     "Vestfold": ("39",),
     "Østfold": ("31",),
 }
@@ -109,19 +115,64 @@ def _best_settlement(names: list[dict]) -> dict | None:
     return min(candidates, key=lambda n: _TYPE_RANK[n["navneobjekttype"]], default=None)
 
 
-def _municipality(names: list[dict], place: str) -> dict | None:
-    """ "<place> kommune" exactly, else the only municipality ending in it.
+def _municipality(
+    names: list[dict], place: str, *, exact_only: bool = False
+) -> dict | None:
+    """ "<place> kommune" exactly, else (unless `exact_only`) the only one ending in it.
 
-    The exact name wins because "*Heim kommune" also matches Trondheim kommune.
+    Current municipalities come before former ones. The exact name wins because
+    "*Heim kommune" also matches Trondheim kommune; "*Eiker kommune" matches both Nedre
+    and Øvre Eiker, so it is rejected.
     """
     municipalities = [
-        n for n in names if n.get("navneobjekttype") == "Kommune" and _has_point(n)
+        n
+        for kind in ("Kommune", FORMER_MUNICIPALITY)
+        for n in names
+        if n.get("navneobjekttype") == kind and _has_point(n)
     ]
     exact = f"{place} kommune".casefold()
     for n in municipalities:
         if n.get("skrivemåte", "").casefold() == exact:
             return n
+    if exact_only:
+        return None
     return municipalities[0] if len(municipalities) == 1 else None
+
+
+# Words that only qualify a name: "Nedre Eiker" must not be searched as "Nedre".
+_QUALIFIERS = {
+    w.casefold()
+    for w in [
+        "Nedre",
+        "Øvre",
+        "Vestre",
+        "Austre",
+        "Østre",
+        "Nord",
+        "Sør",
+        "Indre",
+        "Ytre",
+        "Midtre",
+        "Store",
+        "Lille",
+    ]
+}
+
+
+def name_parts(place: str) -> list[str]:
+    """The single places in a two-name branch, phrases before single words.
+
+    "Høre/Vestre Slidre" -> ["Høre", "Vestre Slidre", "Slidre"];
+    "Øyer Tretten" -> ["Øyer", "Tretten"]. The whole name itself is not included.
+    """
+    phrases = [p.strip() for p in re.split(r"\s+og\s+|/|-", place) if p.strip()]
+    words = [w for p in phrases if " " in p for w in p.split()]
+    parts = [
+        p
+        for p in phrases + words
+        if p != place and p.casefold() not in _QUALIFIERS and p.casefold() != "og"
+    ]
+    return list(dict.fromkeys(parts))
 
 
 class KartverketGeocoder:
@@ -152,21 +203,35 @@ class KartverketGeocoder:
             raise GeocodeError(f"{text!r}: {exc}") from None
         return names if isinstance(names, list) else []
 
-    def _lookup(self, place: str, county_numbers: tuple[str, ...]) -> dict | None:
-        """The place as a settlement, else as the one municipality named after it."""
-        return _best_settlement(self._search(place, county_numbers)) or (
-            _municipality(self._search(f"*{place} kommune", county_numbers), place)
-        )
+    def _lookup(
+        self, place: str, county_numbers: tuple[str, ...], *, strict: bool = False
+    ) -> dict | None:
+        """The place as a settlement, else as the municipality named after it.
+
+        `strict` (for one part of a two-name branch) only accepts the exact
+        "<place> kommune", never the wildcard "only one match" rule, so a part like
+        "Eiker" can't drift to a neighbour.
+        """
+        hit = _best_settlement(self._search(place, county_numbers))
+        if hit or strict:
+            return hit or _municipality(
+                self._search(f"{place} kommune", county_numbers), place, exact_only=True
+            )
+        return _municipality(self._search(f"*{place} kommune", county_numbers), place)
+
+    def _find(self, target: Target) -> dict | None:
+        """The whole name, else the first of its parts that matches: a two-name branch
+        like "Øyer Tretten" is placed at one of them; the popup shows the full name."""
+        hit = self._lookup(target.place, target.county_numbers)
+        for part in name_parts(target.place):
+            if hit:
+                break
+            hit = self._lookup(part, target.county_numbers, strict=True)
+        return hit
 
     def geocode(self, target: Target) -> GeocodeResult:
-        # "Arna og Åsane" matches nothing as a whole; fall back to its first part.
-        names = [target.place]
-        if " og " in target.place:
-            names.append(target.place.split(" og ")[0])
-        for name in names:
-            hit = self._lookup(name, target.county_numbers)
-            if hit is None:
-                continue
+        hit = self._find(target)
+        if hit is not None:
             point = hit["representasjonspunkt"]
             municipalities = hit.get("kommuner") or [{}]
             return GeocodeResult(
@@ -184,7 +249,10 @@ class KartverketGeocoder:
 
 # ── targets ───────────────────────────────────────────────────────────────────
 
-_RED_CROSS = re.compile(r"\b(Røde Kors|Hjelpekorps)\b( i)?", re.IGNORECASE)
+# "Raude Kross" is the Nynorsk spelling; "Saltdal Omsorg" is the Saltdal branch.
+_RED_CROSS = re.compile(
+    r"\b(Røde Kors|Raude Kross|Hjelpekorps|Omsorg)\b( i)?", re.IGNORECASE
+)
 # "Trøndelag – Nord" -> "Trøndelag", "Rogaland med Flekkefjord by" -> "Rogaland"
 _DISTRICT_SUFFIX = re.compile(r"\s+(–|med)\s+.*$")
 
@@ -253,9 +321,19 @@ class Summary:
     cached: int = 0
 
 
-def _uncached(targets: list[Target], cache: dict[str, GeocodeResult]) -> list[Target]:
+def _uncached(
+    targets: list[Target],
+    cache: dict[str, GeocodeResult],
+    *,
+    retry_misses: bool = False,
+) -> list[Target]:
+    """Targets to look up: not cached, or (with `retry_misses`) cached as no match."""
     unique = {t.query: t for t in targets}
-    return [t for q, t in unique.items() if q not in cache]
+    return [
+        t
+        for q, t in unique.items()
+        if q not in cache or (retry_misses and not cache[q].found)
+    ]
 
 
 def geocode_missing(
@@ -263,10 +341,11 @@ def geocode_missing(
     geocoder: KartverketGeocoder,
     cache: dict[str, GeocodeResult],
     *,
+    retry_misses: bool = False,
     log: Callable[[str], None] = print,
 ) -> Summary:
     """Look up the targets that aren't cached yet; results are added to `cache`."""
-    todo = _uncached(targets, cache)
+    todo = _uncached(targets, cache, retry_misses=retry_misses)
     summary = Summary(cached=len({t.query for t in targets}) - len(todo))
     for i, target in enumerate(todo, 1):
         result = geocoder.geocode(target)
@@ -298,14 +377,19 @@ def missing_targets() -> list[Target]:
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--dry-run", action="store_true", help="list queries, no calls")
+    parser.add_argument(
+        "--retry-misses",
+        action="store_true",
+        help="look up cached 'no match' branches again (found ones are kept)",
+    )
     args = parser.parse_args(argv)
 
     targets = missing_targets()
     cache = load_cache()
-    todo = _uncached(targets, cache)
+    todo = _uncached(targets, cache, retry_misses=args.retry_misses)
     print(
         f"[geocode] {len(targets)} branches without coordinates in {config.RAW_DIR}, "
-        f"{len(todo)} not cached yet"
+        f"{len(todo)} to look up"
     )
     if args.dry_run:
         for target in todo:
@@ -318,7 +402,9 @@ def main(argv: list[str] | None = None) -> None:
         return
 
     try:
-        summary = geocode_missing(targets, KartverketGeocoder(), cache)
+        summary = geocode_missing(
+            targets, KartverketGeocoder(), cache, retry_misses=args.retry_misses
+        )
     except GeocodeError as exc:
         raise SystemExit(
             f"[geocode] Stopped: {exc}. Results so far are saved; rerun to resume."
