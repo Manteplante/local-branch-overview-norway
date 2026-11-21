@@ -7,7 +7,7 @@ from backend import config, storage, transform
 from backend.categories import CATEGORIES, OTHER, categorize
 from backend.filters import filter_activities, filter_branches
 from backend.geocode import GeocodeResult
-from backend.mapview import build_map, popup_html
+from backend.mapview import branch_payloads, build_map, excerpt
 
 
 def raw_rows() -> pd.DataFrame:
@@ -279,29 +279,88 @@ def test_filter_activities_drops_rows_without_activity() -> None:
 # ── map ───────────────────────────────────────────────────────────────────────
 
 
-def test_popup_escapes_scraped_text() -> None:
-    row = pd.Series(
-        {
-            "branch": "<script>alert(1)</script>",
-            "address": "A & B",
-            "n_activities": 1,
-            "categories": "Leksehjelp",
-            "branch_url": "https://example.org/?a=1&b='2'",
-        }
-    )
-
-    html = popup_html(row)
-
-    assert "<script>" not in html and "&lt;script&gt;" in html
-    assert "A &amp; B" in html
-    assert "&#x27;2&#x27;" in html
+def map_tables() -> tuple[pd.DataFrame, pd.DataFrame]:
+    tables = transform.build_tables(raw_rows())
+    return tables["branches"], tables["activities"]
 
 
-def test_map_only_plots_located_branches() -> None:
-    branches = transform.build_tables(raw_rows())["branches"]
+def test_excerpt_cuts_at_a_word_with_ellipsis() -> None:
+    assert excerpt("short text") == "short text"
+    assert excerpt("  spaced   out \n text ") == "spaced out text"
+    cut = excerpt("word " * 100, limit=22)
+    assert cut == "word word word word…" and len(cut) <= 23
 
-    rendered = build_map(branches).get_root().render()
 
-    assert "Arendal Røde Kors" in rendered
-    assert "Grimstad Røde Kors" not in rendered
+def test_branch_payloads_only_located_with_grouped_activities() -> None:
+    branches, activities = map_tables()
+
+    payloads = branch_payloads(branches, activities)
+
+    assert [p["name"] for p in payloads] == [
+        "Arendal Røde Kors"
+    ]  # the only located one
+    arendal = payloads[0]
+    assert (arendal["lat"], arendal["lon"]) == (58.49, 8.76)
+    assert arendal["approximate"] is False
+    groups = [g["category"] for g in arendal["groups"]]
+    assert groups == sorted(groups, key=str.casefold)  # alphabetical without highlight
+    assert sum(len(g["items"]) for g in arendal["groups"]) == 2  # empty rows skipped
+
+
+def test_branch_payloads_highlight_first_and_flag_approximate() -> None:
+    branches, activities = map_tables()
+    branches.loc[branches.branch_slug == "arendal", "location_source"] = "place"
+
+    payload = branch_payloads(
+        branches, activities, highlight=["Beredskap og hjelpekorps"]
+    )[0]
+
+    assert payload["groups"][0]["category"] == "Beredskap og hjelpekorps"
+    assert payload["groups"][0]["highlight"] is True
+    assert payload["approximate"] is True
+
+
+def test_map_has_panel_cluster_options_and_hit_tolerance() -> None:
+    branches, activities = map_tables()
+
+    rendered = build_map(branches, activities).get_root().render()
+
     assert "cache.kartverket.no" in rendered
+    assert '"disableClusteringAtZoom": 10' in rendered
+    assert "L.canvas({tolerance: 8})" in rendered
+    assert 'position: "topleft"' in rendered
+    assert "Arendal Røde Kors" in rendered
+    assert "Grimstad Røde Kors" not in rendered  # no coordinates
+
+
+def test_map_data_cannot_break_out_of_the_script() -> None:
+    branches, activities = map_tables()
+    evil = "</script><script>alert(1)</script>"
+    branches.loc[branches.branch_slug == "arendal", "branch"] = evil
+    activities.loc[activities.branch_slug == "arendal", "description"] = "a & <b>"
+
+    rendered = build_map(branches, activities).get_root().render()
+
+    assert evil not in rendered and "alert(1)" in rendered
+    assert "\\u003c/script\\u003e" in rendered
+    assert "<b>" not in rendered
+
+
+def test_map_opens_on_the_mainland_even_with_svalbard() -> None:
+    branches, activities = map_tables()
+    svalbard = branches[branches.branch_slug == "arendal"].assign(
+        branch_slug="longyearbyen",
+        branch="Longyearbyen",
+        latitude=78.22,
+        longitude=15.65,
+    )
+    branches = pd.concat([branches, svalbard], ignore_index=True)
+    branches.loc[
+        branches.branch_slug == "grimstad", ["latitude", "longitude", "has_location"]
+    ] = [58.34, 8.59, True]
+
+    rendered = build_map(branches, activities).get_root().render()
+
+    assert "78.22" in rendered  # the marker is there
+    bounds = rendered.split("fitBounds(")[1].split(")")[0]
+    assert "78.22" not in bounds

@@ -9,18 +9,20 @@ from backend.ui import load_tables, sidebar_filters
 
 st.title("Map")
 
-branches, _ = load_tables()
-selection = filter_branches(
-    branches, **sidebar_filters(branches, search_label="Search branch or address")
-)
+branches, activities = load_tables()
+filters = sidebar_filters(branches, search_label="Search branch or address")
+selection = filter_branches(branches, **filters)
 
 located = selection["has_location"].astype(bool)
 st.caption(
-    f"{located.sum()} branches shown · {(~located).sum()} without location "
-    "(listed under Data, to be geocoded)"
+    f"{located.sum()} branches shown · {(~located).sum()} without a location · "
+    "hover over a marker to see its activities, click to keep them open"
 )
 
 # returned_objects=[]: panning and zooming don't rerun the page.
 st_folium(
-    build_map(selection), height=650, use_container_width=True, returned_objects=[]
+    build_map(selection, activities, highlight=filters["categories"]),
+    height=650,
+    use_container_width=True,
+    returned_objects=[],
 )

@@ -50,11 +50,11 @@ def test_page_shows_empty_state(page: Path, without_tables: None) -> None:
 
 def test_map_filters_change_the_count(with_tables: None) -> None:
     at = run(ROOT / "pages" / "01_map.py")
-    assert "1 branches shown · 2 without location" in at.caption[0].value
+    assert "1 branches shown · 2 without a location" in at.caption[0].value
 
     at.multiselect(key="categories").select("Leksehjelp").run()
 
-    assert "0 branches shown · 1 without location" in at.caption[0].value
+    assert "0 branches shown · 1 without a location" in at.caption[0].value
 
 
 def test_app_entry_point_runs(with_tables: None) -> None:
