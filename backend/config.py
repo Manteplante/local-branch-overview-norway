@@ -34,7 +34,7 @@ ASSETS_DIR = _dir("ASSETS_DIR", "assets")
 #   xlsx     only when a human needs to open it in Excel (needs openpyxl)
 FILE_FORMAT = _text("FILE_FORMAT", "csv").strip(".").lower()
 
-# Geocoding (`make geocode`, Kartverket place names; see docs/missing-data-quality.md).
+# Geocoding (`make geocode`, Kartverket address/place; see docs/missing-data-quality.md).
 GEOCODE_CACHE = _dir("GEOCODE_CACHE", "data/geocode_cache.csv")  # committed
 # Hand-entered locations (`make overrides`), they beat every other source.
 OVERRIDES = _dir("OVERRIDES", "data/overrides.csv")  # committed

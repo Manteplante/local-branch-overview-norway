@@ -8,6 +8,7 @@ import requests
 from backend import config, geocode
 from backend.geocode import (
     COUNTY_NUMBERS,
+    Address,
     GeocodeError,
     GeocodeResult,
     KartverketGeocoder,
@@ -17,7 +18,10 @@ from backend.geocode import (
     geocode_missing,
     load_cache,
     name_parts,
+    parse_address,
     save_cache,
+    street_pattern,
+    town_names,
 )
 
 
@@ -175,45 +179,41 @@ def test_name_parts(name: str, parts: list[str]) -> None:
 
 def test_two_name_branch_takes_first_part_that_matches() -> None:
     g = geocoder(
-        names(), names(),  # "Furnes og Brumunddal" as a whole
-        names(), names(),  # "Furnes"
+        names(),  # "Furnes og Brumunddal" as a settlement
+        names(),  # "Furnes"
         names(place("Brumunddal", "By", 60.88, 10.94)),
-    )  # fmt: skip
+    )
 
     result = g.geocode(
         Target("Furnes og Brumunddal, Hedmark", "Furnes og Brumunddal", ("34",))
     )
 
-    assert result.matched_name == "Brumunddal"
+    assert result.matched_name == "Brumunddal" and result.method == "place"
+    # every name is tried as a settlement before any municipality search
     assert [c["sok"] for c in g.session.calls] == [
         "Furnes og Brumunddal",
-        "*Furnes og Brumunddal kommune",
         "Furnes",
-        "Furnes kommune",  # a part only takes the exact municipality, no wildcard
         "Brumunddal",
     ]
 
 
 def test_part_never_drifts_to_a_neighbouring_municipality() -> None:
     g = geocoder(
-        names(), names(),  # "Nedre Eiker" as a whole
-        names(),  # "Eiker"
+        names(),  # "Nedre Eiker" as a settlement
+        names(),  # "Eiker" as a settlement
+        names(),  # "*Nedre Eiker kommune"
         names(place("Øvre Eiker kommune", "Kommune")),  # "Eiker kommune": not exact
     )  # fmt: skip
     assert g.geocode(Target("Nedre Eiker", "Nedre Eiker", ("33",))).status == "no_match"
 
 
 def test_og_names_fall_back_to_first_part() -> None:
-    g = geocoder(names(), names(), names(place("Arna", "Bydel", 60.42, 5.47)))
+    g = geocoder(names(), names(place("Arna", "Bydel", 60.42, 5.47)))
 
     result = g.geocode(Target("Arna og Åsane, Hordaland", "Arna og Åsane", ("46",)))
 
     assert result.matched_name == "Arna" and result.found
-    assert [c["sok"] for c in g.session.calls] == [
-        "Arna og Åsane",
-        "*Arna og Åsane kommune",
-        "Arna",
-    ]
+    assert [c["sok"] for c in g.session.calls] == ["Arna og Åsane", "Arna"]
 
 
 def test_no_match() -> None:
@@ -397,3 +397,221 @@ def test_retry_misses_requeries_only_no_match_rows() -> None:
 
     assert (summary.found, summary.cached) == (1, 1)
     assert cache["Voss, Hordaland"].found and cache["Bagn, Oppland"] is found
+
+
+# ── addresses ─────────────────────────────────────────────────────────────────
+
+
+def address_hit(
+    street: str, number: int, letter: str = "", lat: float = 60.8, lon: float = 10.7
+) -> dict:
+    text = f"{street} {number}{letter}"
+    return {
+        "adressetekst": text, "adressenavn": street, "nummer": number, "bokstav": letter,
+        "postnummer": "2821", "poststed": "GJØVIK", "kommunenavn": "GJØVIK",
+        "representasjonspunkt": {"epsg": "EPSG:4258", "lat": lat, "lon": lon},
+    }  # fmt: skip
+
+
+def addresses(*hits: dict) -> dict:
+    return {"metadata": {"totaltAntallTreff": len(hits)}, "adresser": list(hits)}
+
+
+# Real strings from the 2026-11 scrape.
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("Frøyas gate 6, 2270 FLISA", Address("Frøyas gate", "6", "", "2270", "FLISA")),
+        (
+            "Heimdalsgt. 3, 2821 GJØVIK",
+            Address("Heimdalsgt", "3", "", "2821", "GJØVIK"),
+        ),
+        ("Industrivn.039, 2680 VÅGÅ", Address("Industrivn", "39", "", "2680", "VÅGÅ")),
+        (
+            "Tvildesveien 18 A, 5705 VOSS",
+            Address("Tvildesveien", "18", "A", "5705", "VOSS"),
+        ),
+        (
+            "Sagvn. 16 Postboks 149, 3321 VESTFOSSEN",
+            Address("Sagvn", "16", "", "3321", "VESTFOSSEN"),
+        ),
+        (
+            "Noroddveien 26 v/Elisabeth Edvardsen, 4816 KOLBJØRNSVIK",
+            Address("Noroddveien", "26", "", "4816", "KOLBJØRNSVIK"),
+        ),
+        (
+            "c/o Ingrid Norbye-Antonsen, Dalavegen 44 A, 6885 ÅRDALSTANGEN",
+            Address("Dalavegen", "44", "A", "6885", "ÅRDALSTANGEN"),
+        ),
+        (
+            "Trollhaugen, Mellombygdveien 11, 9321 MOEN",
+            Address("Mellombygdveien", "11", "", "9321", "MOEN"),
+        ),
+        (
+            "Torgeir Vraasplass 4, 3044       DRAMMEN",
+            Address("Torgeir Vraasplass", "4", "", "3044", "DRAMMEN"),
+        ),
+        ("Boks 195, 4558 VANSE", Address(postcode="4558", town="VANSE")),
+        ("Besøksadresse:, 5879 BERGEN", Address(postcode="5879", town="BERGEN")),
+        (
+            "Øygarden Røde Kors v/ Roar Elde, 5337 RONG",
+            Address(postcode="5337", town="RONG"),
+        ),
+        ("", Address()),
+    ],
+)
+def test_parse_address(text: str, expected: Address) -> None:
+    assert parse_address(text) == expected
+
+
+@pytest.mark.parametrize(
+    ("street", "pattern"),
+    [
+        ("Heimdalsgt", "Heimdals*"),
+        ("Sentrumsvn", "Sentrums*"),
+        ("Tvildesveien", "Tvildes*"),
+        ("Torgeir Vraasplass", "Torgeir Vraas*"),
+        ("Frøyas gate", "Frøyas*"),
+        ("Kolskogheiane", "Kolskogheiane*"),
+        ("Veg", "Veg*"),  # too short to cut
+    ],
+)
+def test_street_pattern(street: str, pattern: str) -> None:
+    assert street_pattern(street) == pattern
+
+
+def test_town_names() -> None:
+    assert town_names("SANDE I VESTFOLD") == ["Sande I Vestfold", "Sande"]
+    assert town_names("FLISA") == ["Flisa"]
+    assert town_names("") == []
+
+
+GJOVIK = Target("Gjøvik, Oppland | x", "Gjøvik", ("34",), "Heimdalsgt. 3, 2821 GJØVIK")
+
+
+def test_street_address_wins_and_is_searched_by_post_town() -> None:
+    g = geocoder(addresses(address_hit("Heimdals gate", 3, lat=60.79, lon=10.69)))
+
+    result = g.geocode(GJOVIK)
+
+    assert (result.method, result.place_type) == ("address", "Adresse")
+    assert (result.latitude, result.longitude) == (60.79, 10.69)
+    assert result.matched_name == "Heimdals gate 3, 2821 GJØVIK"
+    assert result.municipality == "Gjøvik"
+    assert g.session.calls == [
+        {
+            "utkoordsys": "4258",
+            "treffPerSide": "10",
+            "sok": "Heimdals* 3",
+            "poststed": "GJØVIK",
+        }
+    ]
+
+
+def test_address_falls_back_to_post_code() -> None:
+    g = geocoder(addresses(), addresses(address_hit("Heimdals gate", 3)))
+    assert g.geocode(GJOVIK).method == "address"
+    assert g.session.calls[1]["postnummer"] == "2821"
+
+
+def test_address_needs_the_house_number_and_prefers_no_letter() -> None:
+    hits = addresses(
+        address_hit("Heimdals gate", 13, lat=1),  # wildcard noise: wrong number
+        address_hit("Heimdals gate", 3, "B", lat=2),
+        address_hit("Heimdals gate", 3, lat=3),
+    )
+    assert geocoder(hits).geocode(GJOVIK).latitude == 3
+
+
+def test_address_letter_is_matched_when_given() -> None:
+    target = Target("Voss", "Voss", ("46",), "Tvildesveien 18 A, 5705 VOSS")
+    hits = addresses(
+        address_hit("Tvildesvegen", 18, lat=1),
+        address_hit("Tvildesvegen", 18, "A", lat=2),
+    )
+    assert geocoder(hits).geocode(target).latitude == 2
+
+
+def test_address_on_two_different_streets_is_rejected() -> None:
+    hits = addresses(address_hit("Heimdals gate", 3), address_hit("Heimdalsvegen", 3))
+    g = geocoder(hits, addresses(), names(place("Gjøvik", "By", 60.8, 10.7)))
+
+    result = g.geocode(GJOVIK)
+
+    assert (result.method, result.matched_name) == ("place", "Gjøvik")
+
+
+def test_po_box_uses_the_post_town() -> None:
+    target = Target(
+        "Lista, Agder | Boks 195, 4558 VANSE", "Lista", ("42",), "Boks 195, 4558 VANSE"
+    )
+    g = geocoder(names(), names(place("Vanse", "Tettsted", 58.10, 6.69)))
+
+    result = g.geocode(target)
+
+    assert (result.method, result.matched_name) == ("place", "Vanse")
+    assert [c["sok"] for c in g.session.calls] == [
+        "Lista",
+        "Vanse",
+    ]  # no address search
+
+
+def test_branch_settlement_beats_post_town() -> None:
+    target = Target(
+        "Arna og Åsane", "Arna og Åsane", ("46",), "Besøksadresse:, 5879 BERGEN"
+    )
+    g = geocoder(names(), names(place("Arna", "Bydel", 60.42, 5.47)))
+    assert g.geocode(target).matched_name == "Arna"  # not Bergen centre
+
+
+def test_post_town_beats_municipality() -> None:
+    target = Target("Gauldal", "Gauldal", ("50",), "Bjørgen, 7387 SINGSÅS")
+    g = geocoder(names(), names(place("Singsås", "Tettsted", 62.9, 10.7)))
+    assert g.geocode(target).matched_name == "Singsås"
+    assert len(g.session.calls) == 2  # never got to "*Gauldal kommune"
+
+
+def test_cache_key_includes_address() -> None:
+    t = branch_target(
+        "Solør Røde Kors", "Hedmark Røde Kors", "Frøyas  gate 6, 2270 FLISA"
+    )
+    assert t.query == "Solør, Hedmark | Frøyas gate 6, 2270 FLISA"
+    assert t.address == "Frøyas gate 6, 2270 FLISA"
+    assert (
+        branch_target("Solør Røde Kors", "Hedmark Røde Kors").query == "Solør, Hedmark"
+    )
+
+
+def test_prune_drops_unused_rows(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = tmp_path / "cache.csv"
+    used = GeocodeResult(query="Bagn, Oppland", status="found", latitude=1, longitude=1)
+    old = GeocodeResult(query="Old key", status="no_match")
+    save_cache({used.query: used, old.query: old}, path)
+    monkeypatch.setattr(config, "GEOCODE_CACHE", path)
+    monkeypatch.setattr(geocode, "missing_targets", lambda: [BAGN])
+
+    geocode.main([])  # without --prune: kept
+    assert set(load_cache(path)) == {"Bagn, Oppland", "Old key"}
+    geocode.main(["--prune"])
+    assert set(load_cache(path)) == {"Bagn, Oppland"}
+
+
+def test_address_ignores_other_streets_from_the_loose_wildcard() -> None:
+    target = Target("Redalen", "Redalen", ("34", "32"), "Birivegen 32, 2836 BIRI")
+    hits = addresses(
+        address_hit("Honnevegen", 32, lat=1),
+        address_hit("Birivegen", 32, lat=2),
+        address_hit("Klomsteinrovegen", 32, lat=3),
+    )
+    assert geocoder(hits).geocode(target).latitude == 2
+
+
+def test_exact_street_name_beats_other_streets_with_the_stem() -> None:
+    target = Target("Brumunddal", "Brumunddal", ("34",), "Brugata 3 a, 2380 BRUMUNDDAL")
+    hits = addresses(
+        address_hit("Brustadvegen", 3, "A", lat=1),
+        address_hit("Brugata", 3, "A", lat=2),
+    )
+    assert geocoder(hits).geocode(target).latitude == 2

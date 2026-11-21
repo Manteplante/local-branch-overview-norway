@@ -49,12 +49,12 @@ def test_seed_adds_only_branches_without_location(tmp_path: Path) -> None:
         ("agder", "grimstad", "kartverket"),
     )
 
-    assert seed(table, path) == 2
+    assert seed(table, path) == (2, 0)
     df = pd.read_csv(path, dtype=str, keep_default_na=False)
     assert list(df.columns) == COLUMNS
     assert list(df.branch_slug) == ["lista", "solor"]  # sorted by key
     assert (df.latitude == "").all() and (df.longitude == "").all()
-    assert seed(table, path) == 0  # rerunning adds nothing
+    assert seed(table, path) == (0, 0)  # rerunning adds nothing
 
 
 def test_seed_keeps_filled_rows_and_their_order(tmp_path: Path) -> None:
@@ -65,7 +65,7 @@ def test_seed_keeps_filled_rows_and_their_order(tmp_path: Path) -> None:
     )
     before = path.read_text(encoding="utf-8")
 
-    added = seed(
+    added, _ = seed(
         branches(("agder", "lista", "none"), ("finnmark", "langfjord", "none")), path
     )
 
@@ -161,3 +161,21 @@ def test_transform_stops_on_a_bad_file(
     monkeypatch.setattr(transform, "load_cache", dict)
     with pytest.raises(SystemExit, match="outside Norway"):
         transform.run()
+
+
+def test_seed_drops_empty_rows_for_branches_located_since(tmp_path: Path) -> None:
+    path = write(
+        tmp_path / "overrides.csv",
+        "hedmark,solor,Solør,,,",  # found by address now: drop
+        "agder,lista,Lista,58.10,6.69,Vanse",  # filled by hand: keep, even if located
+        "finnmark,langfjord,Langfjord,,,",  # still missing: keep
+    )
+    table = branches(
+        ("hedmark", "solor", "address"),
+        ("agder", "lista", "place"),
+        ("finnmark", "langfjord", "none"),
+    )
+
+    assert seed(table, path) == (0, 1)
+    df = pd.read_csv(path, dtype=str, keep_default_na=False)
+    assert list(df.branch_slug) == ["lista", "langfjord"]

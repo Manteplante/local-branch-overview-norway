@@ -117,12 +117,14 @@ def test_build_tables() -> None:
 
 def test_geocodes_fill_only_missing_coordinates() -> None:
     geocodes = {
-        "Grimstad, Agder": GeocodeResult(
-            query="Grimstad, Agder", status="found", latitude=58.34, longitude=8.59,
-            matched_name="Grimstad", place_type="By", municipality="Grimstad",
+        "Grimstad, Agder | Frivoldveien 11, 4877 GRIMSTAD": GeocodeResult(
+            query="Grimstad, Agder | Frivoldveien 11, 4877 GRIMSTAD", status="found", method="address",
+            latitude=58.34, longitude=8.59, matched_name="Frivoldveien 11, 4877 GRIMSTAD",
+            place_type="Adresse", municipality="Grimstad",
         ),
-        "Arendal, Agder": GeocodeResult(  # must not override the site's
-            query="Arendal, Agder", status="found", latitude=1.0, longitude=1.0,
+        "Arendal, Agder | Hans Thornes vei 26, 4846 ARENDAL": GeocodeResult(  # site wins
+            query="Arendal, Agder | Hans Thornes vei 26, 4846 ARENDAL", status="found",
+            method="address", latitude=1.0, longitude=1.0,
         ),
         "Flatanger, Trøndelag": GeocodeResult(
             query="Flatanger, Trøndelag", status="no_match",
@@ -136,15 +138,19 @@ def test_geocodes_fill_only_missing_coordinates() -> None:
     assert by_slug.loc["arendal", "location_source"] == "site"
     grimstad = by_slug.loc["grimstad"]
     assert (grimstad.latitude, grimstad.longitude) == (58.34, 8.59)
-    assert grimstad.location_source == "kartverket" and bool(grimstad.has_location)
+    assert grimstad.location_source == "address" and bool(grimstad.has_location)
     assert grimstad.address == "Frivoldveien 11, 4877 GRIMSTAD"  # site address kept
     assert by_slug.loc["flatanger", "location_source"] == "none"
 
 
 def test_manual_overrides_beat_every_source() -> None:
     geocodes = {
-        "Grimstad, Agder": GeocodeResult(
-            query="Grimstad, Agder", status="found", latitude=58.34, longitude=8.59
+        "Grimstad, Agder | Frivoldveien 11, 4877 GRIMSTAD": GeocodeResult(
+            query="Grimstad, Agder | Frivoldveien 11, 4877 GRIMSTAD",
+            status="found",
+            method="address",
+            latitude=58.34,
+            longitude=8.59,
         )
     }
     manual = pd.DataFrame(

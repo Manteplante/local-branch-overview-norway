@@ -52,7 +52,7 @@ scrape: ## Scrape all districts to data/raw (slow, ~2-3 h, resumable)
 scrape-sample: ## Test scrape: <=2 branches per district to data/sample (~10 min)
 	uv run scrape-branches --limit-branches 2 --out data/sample
 
-geocode: ## Geocode branches without coordinates via Kartverket place names (free)
+geocode: ## Geocode branches without coordinates via Kartverket: street address, else place (free)
 	uv run python -m backend.geocode
 
 geocode-retry: ## Geocode again the branches cached as 'no match' (after matcher changes)
