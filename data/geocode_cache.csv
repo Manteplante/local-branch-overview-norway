@@ -24,6 +24,7 @@ query,status,method,latitude,longitude,matched_name,place_type,municipality,fetc
 "Båtsfjord, Finnmark | Boks 1, 9991 BÅTSFJORD",found,place,70.62924,29.69479,Båtsfjord,Tettsted,Båtsfjord,2026-11-21T10:39:34+00:00
 "Bærum, Akershus | Elias Smiths vei 1, 1337 SANDVIKA",found,address,59.89268021278884,10.520876407536951,"Elias Smiths vei 1, 1337 SANDVIKA",Adresse,Bærum,2026-11-21T10:39:15+00:00
 "Bø og Sauherad, Telemark | Stasjonsvegen 4, 3800 BØ I TELEMARK",found,address,59.41206245244537,9.070678141061615,"Stasjonsvegen 4, 3800 BØ I TELEMARK",Adresse,Midt-Telemark,2026-11-21T10:41:36+00:00
+"Bø, Nordland",found,place,68.68823,14.47899,Bø kommune,Kommune,Bø,2026-11-21T11:07:17+00:00
 "Bømlo, Hordaland | Telegrafveien 2, 5427 URANGSVÅG",found,address,59.799316067310585,5.18162600600493,"Telegrafvegen 2, 5427 URANGSVÅG",Adresse,Bømlo,2026-11-21T10:39:58+00:00
 "Dale, Hordaland | Postboks 29, 5721 DALEKVAM",found,place,61.36353,5.40037,Dale,Tettsted,Fjaler,2026-11-21T10:39:59+00:00
 "Dovre, Oppland | Dovre, 2662 DOVRE",found,place,61.9875,9.25556,Dovre,Tettsted,Dovre,2026-11-21T10:40:30+00:00
@@ -55,7 +56,7 @@ query,status,method,latitude,longitude,matched_name,place_type,municipality,fetc
 "Fyresdal, Telemark | Foldsævegen 134, 3870 FYRESDAL",found,address,59.32416491044149,8.152052712671503,"Foldsævegen 134, 3870 FYRESDAL",Adresse,Fyresdal,2026-11-21T10:41:37+00:00
 "Førde, Sogn og Fjordane | Langebruvegen 28, 4. etg., 6800 FØRDE",found,address,61.45374317092331,5.85799421400483,"Langebruvegen 28, 6800 FØRDE",Adresse,Sunnfjord,2026-11-21T10:41:23+00:00
 "Gaular, Sogn og Fjordane | 6973 SANDE I SUNNFJORD",found,place,61.32564,5.79527,Gaular,Annen administrativ inndeling,Sunnfjord,2026-11-21T10:41:24+00:00
-"Gauldal, Trøndelag | Bjørgen, 7387 SINGSÅS",found,place,62.95618,10.7308,Singsås,Bygdelag (bygd),Midtre Gauldal,2026-11-21T10:41:06+00:00
+"Gauldal, Trøndelag | Bjørgen, 7387 SINGSÅS",found,place,62.95618,10.7308,Singsås,Bygdelag (bygd),Midtre Gauldal,2026-11-21T11:07:24+00:00
 "Gausdal, Oppland | Østringsvegen 339, 2651 ØSTRE GAUSDAL",found,address,61.25263681877512,10.183581564948186,"Østringsvegen 339, 2651 ØSTRE GAUSDAL",Adresse,Gausdal,2026-11-21T10:40:32+00:00
 "Geilo, Buskerud | Bakkestølveien 56, 3580 GEILO",found,address,60.524595441353604,8.203626819738775,"Bakkestølvegen 56, 3580 GEILO",Adresse,Hol,2026-11-21T10:39:27+00:00
 "Gjerpen, Telemark | MEENSVEGEN 19, 3712 SKIEN",found,address,59.1706504644223,9.645877359872172,"Meensvegen 19, 3712 SKIEN",Adresse,Skien,2026-11-21T10:41:38+00:00
@@ -89,6 +90,7 @@ query,status,method,latitude,longitude,matched_name,place_type,municipality,fetc
 "Inderøy, Trøndelag",found,,63.8761,11.28863,Inderøy kommune,Kommune,Inderøy,2026-11-20T22:56:29+00:00
 "Jevnaker, Oppland | Bakkaveien 1, 3520 JEVNAKER",found,address,60.24257467861251,10.378676668451595,"Bakkavegen 1, 3520 JEVNAKER",Adresse,Jevnaker,2026-11-21T10:40:35+00:00
 "Jølster, Sogn og Fjordane | c/o Inge Erikstad, 6843 Skei i Jølster",found,place,61.56918,6.48356,Jølster,Annen administrativ inndeling,Sunnfjord,2026-11-21T10:41:27+00:00
+"Karasjok, Finnmark | Postboks 449, 9811 VADSØ",found,place,69.47188,25.51113,Karasjok,Tettsted,Kárášjohka - Karasjok,2026-11-21T11:06:38+00:00
 "Karmøy, Rogaland | Postboks 47, 4291 KOPERVIK",found,place,59.28081,5.30539,Karmøy,Kommune,Karmøy,2026-11-21T10:40:52+00:00
 "Kautokeino, Finnmark | Boks 99, 9521 KAUTOKEINO",found,place,69.01243,23.04101,Kautokeino,Tettsted,Guovdageaidnu - Kautokeino,2026-11-21T10:39:36+00:00
 "Kinsarvik, Hordaland | Postboks 28, 5782 KINSARVIK",found,place,60.37567,6.71948,Kinsarvik,Tettsted,Ullensvang,2026-11-21T10:40:05+00:00
@@ -104,7 +106,7 @@ query,status,method,latitude,longitude,matched_name,place_type,municipality,fetc
 "Laksevåg, Hordaland | Damsgårdsveien 221, 5160 LAKSEVÅG",found,address,60.38744519027383,5.297639421394664,"Damsgårdsveien 221, 5160 LAKSEVÅG",Adresse,Bergen,2026-11-21T10:40:06+00:00
 "Langfjord, Finnmark | Bognelvdalen 30, 9545 LANGFJORDBOTN",found,address,70.01666879829543,22.30830375416932,"Bognelvdalen 30, 9545 LANGFJORDBOTN",Adresse,Alta,2026-11-21T10:39:38+00:00
 "Leikanger, Sogn og Fjordane | Hanahaug 27, 6863 LEIKANGER",found,address,61.183221648302535,6.794908304854284,"Hanahaug 27, 6863 LEIKANGER",Adresse,Sogndal,2026-11-21T10:41:28+00:00
-"Leiranger, Nordland | 8285 LEINES",found,place,67.73699,14.79824,Leines,Bygdelag (bygd),Steigen,2026-11-21T10:40:23+00:00
+"Leiranger, Nordland | 8285 LEINES",found,place,67.73699,14.79824,Leines,Bygdelag (bygd),Steigen,2026-11-21T11:07:19+00:00
 "Lesja, Oppland | 2665 LESJA",found,place,62.11837,8.86424,Lesja,Tettsted,Lesja,2026-11-21T10:40:35+00:00
 "Lierne, Trøndelag | Julesveien 446, 7884 SØRLI",found,address,64.16825655680793,13.855365655523046,"Julesveien 446, 7884 SØRLI",Adresse,Lierne,2026-11-21T10:41:00+00:00
 "Lillesand, Agder | Havnegata 10, 4790 LILLESAND",found,address,58.24679040882222,8.378294904281578,"Havnegata 10, 4790 LILLESAND",Adresse,Lillesand,2026-11-21T10:39:09+00:00
@@ -137,28 +139,29 @@ query,status,method,latitude,longitude,matched_name,place_type,municipality,fetc
 "Nes, Hedmark | Helgøyvegen 115 (Midtun), 2350 NES PÅ HEDMARKEN",found,address,60.7533592400217,10.950537388902179,"Helgøyvegen 115, 2350 NES PÅ HEDMARKEN",Adresse,Ringsaker,2026-11-21T10:39:49+00:00
 "Nesbyen, Buskerud",found,,60.56809,9.10276,Nesbyen,Tettsted,Nesbyen,2026-11-20T22:54:43+00:00
 "Nesodden, Akershus | Postboks 45, 1451 NESODDTANGEN",found,place,59.8422,10.6494,Nesodden kommune,Kommune,Nesodden,2026-11-21T10:39:23+00:00
-"Nesseby, Finnmark | Boks 118, 9840 VARANGERBOTN",found,place,70.15198,28.8648,Nesseby,Bygdelag (bygd),Unjárga - Nesseby,2026-11-21T10:39:39+00:00
+"Nesseby, Finnmark | Boks 118, 9840 VARANGERBOTN",found,place,70.16382,28.57113,Nesseby kommune,Kommune,Unjárga - Nesseby,2026-11-21T11:07:15+00:00
 "Nissedal, Telemark | Postboks 59, 3883 TREUNGEN",found,place,59.02064,8.5202,Treungen,Tettsted,Nissedal,2026-11-21T10:41:40+00:00
 "Nome, Telemark | Ringsevja 1, 3830 ULEFOSS",found,address,59.28206446299063,9.266050648858648,"Ringsevja 1, 3830 ULEFOSS",Adresse,Nome,2026-11-21T10:41:41+00:00
 "Nord-Aurdal, Oppland | Boks 43, 2909 AURDAL",found,place,60.92443,9.41488,Aurdal,Tettsted,Nord-Aurdal,2026-11-21T10:40:37+00:00
 "Nord-Fron, Oppland | Postboks 26, 2640 VINSTRA",found,place,61.59496,9.75134,Vinstra,By,Nord-Fron,2026-11-21T10:40:39+00:00
 "Nordfjord, Nordland | 8226 STRAUMEN",found,place,67.34812,15.59719,Straumen,Tettbebyggelse,Sørfold,2026-11-21T10:40:25+00:00
-"Nordfold, Nordland",found,,67.76228,15.23021,Nordfolda,Bygdelag (bygd),Steigen,2026-11-20T22:55:50+00:00
+"Nordfold, Nordland",found,place,67.76228,15.23021,Nordfolda,Bygdelag (bygd),Steigen,2026-11-21T11:07:20+00:00
 "Nordhordland, Hordaland | Kvassnesvegen 48C, 5914 ISDALSTØ",found,address,60.54447393824914,5.292424181377918,"Kvassnesvegen 48C, 5914 ISDALSTØ",Adresse,Alver,2026-11-21T10:40:06+00:00
+"Nordkapp Besøkstjeneste, Finnmark",found,place,70.97808,25.97465,Nordkapp kommune,Kommune,Nordkapp,2026-11-21T11:06:40+00:00
 "Nordre Land, Oppland | Landmoveien 5, 2870 DOKKA",found,address,60.84025160338135,10.063975010670221,"Landmovegen 5A, 2870 DOKKA",Adresse,Nordre Land,2026-11-21T10:40:40+00:00
 "Nore og Uvdal, Buskerud | Boks 76, 3631 RØDBERG",found,place,60.16884,9.01125,Nore,Tettbebyggelse,Nore og Uvdal,2026-11-21T10:39:32+00:00
 "Norheimsund, Hordaland | Kvamskogen, 5600 NORHEIMSUND",found,place,60.37089,6.14564,Norheimsund,Tettsted,Kvam,2026-11-21T10:40:07+00:00
 "Notodden, Telemark | Professor Tronstads gate 10, 3675 NOTODDEN",found,address,59.5652176488671,9.256265351780296,"Professor Tronstads gate 10, 3675 NOTODDEN",Adresse,Notodden,2026-11-21T10:41:41+00:00
 "Nærbø, Rogaland | Nærbøgata 23, 4365 NÆRBØ",found,address,58.66632921490618,5.644758362090198,"Nærbøgata 23, 4365 NÆRBØ",Adresse,Hå,2026-11-21T10:43:20+00:00
 "Odal, Hedmark",no_match,,,,,,,2026-11-21T10:43:12+00:00
-"Olden, Sogn og Fjordane | Postboks 39, 6788 OLDEN",found,place,61.8328,6.80804,Olden,Bygdelag (bygd),Stryn,2026-11-21T10:41:30+00:00
+"Olden, Sogn og Fjordane | Postboks 39, 6788 OLDEN",found,place,61.8328,6.80804,Olden,Bygdelag (bygd),Stryn,2026-11-21T11:07:28+00:00
 "Oppdal, Trøndelag | Fjellvang 3, 7340 OPPDAL",found,address,62.60444380409547,9.645542359370687,"Fjellvang 3, 7340 OPPDAL",Adresse,Oppdal,2026-11-21T10:41:10+00:00
 "Orkland, Trøndelag | Postboks 103, 7301 ORKANGER",found,place,63.18532,9.76596,Orkland,Annen administrativ inndeling,Orkland,2026-11-21T10:41:11+00:00
 "Os, Hedmark | Håmmålfjellveien 226, 2550 OS I ØSTERDALEN",found,place,62.49649,11.22331,Os,Tettsted,Os,2026-11-21T10:43:13+00:00
 "Os, Hordaland | Kolskogheiane 8, 5206 OS",found,address,60.19810538359237,5.443320640803101,"Kolskogheiane 8, 5210 OS",Adresse,Bjørnafjorden,2026-11-21T10:40:07+00:00
 "Osterøy, Hordaland | Gjerstadveien, 5282 LONEVÅG",found,place,60.52389,5.50554,Osterøy,Kommune,Osterøy,2026-11-21T10:40:08+00:00
 "Otta, Oppland | Boks 92, 2675 OTTA",found,place,61.77124,9.53525,Otta,By,Sel,2026-11-21T10:40:40+00:00
-"Overhalla, Trøndelag | Mølnevegen 2, 7863 OVERHALLA",found,place,64.4936,11.94832,Overhalla,Bygdelag (bygd),Overhalla,2026-11-21T10:43:24+00:00
+"Overhalla, Trøndelag | Mølnevegen 2, 7863 OVERHALLA",found,place,64.4938,11.94755,Overhalla kommune,Kommune,Overhalla,2026-11-21T11:07:22+00:00
 "Porsgrunn, Telemark | Hestehavna 12, 3916 PORSGRUNN",found,address,59.135954183519345,9.66268166468745,"Hestehavna 12, 3916 PORSGRUNN",Adresse,Porsgrunn,2026-11-21T10:41:42+00:00
 "Rakkestad, Østfold | Jernbanegata 2, 1890 RAKKESTAD",found,address,59.427267136100475,11.33939688751094,"Jernbanegata 2, 1890 RAKKESTAD",Adresse,Rakkestad,2026-11-21T10:42:03+00:00
 "Rana, Nordland | Damveien 5, 8610 MO I RANA",found,address,66.31743353991075,14.224935617539048,"Damveien 5, 8610 MO I RANA",Adresse,Rana,2026-11-21T10:40:26+00:00
@@ -178,24 +181,25 @@ query,status,method,latitude,longitude,matched_name,place_type,municipality,fetc
 "Saltdal, Nordland | Osveien 8, 8250 ROGNAN",found,address,67.1016098186591,15.395668913495836,"Osveien 8, 8250 ROGNAN",Adresse,Saltdal,2026-11-21T10:40:27+00:00
 "Saltdal, Nordland | v/Ørjan Larsos, 8250 ROGNAN",found,place,67.10021,15.39086,Rognan,Tettsted,Saltdal,2026-11-21T10:40:27+00:00
 "Sande, Vestfold | Postboks 165, 3071 SANDE I VESTFOLD",found,place,59.58679,10.20808,Sande,Tettsted,Holmestrand,2026-11-21T10:41:58+00:00
-"Sandstrand, Troms | Bjønshågen 34, Sandstrand, 9445 TOVIK",found,place,68.67824,16.78662,Sandstrand,Bygdelag (bygd),Dielddanuorri - Tjeldsund,2026-11-21T10:43:32+00:00
+"Sandstrand, Troms | Bjønshågen 34, Sandstrand, 9445 TOVIK",found,place,68.67824,16.78662,Sandstrand,Bygdelag (bygd),Dielddanuorri - Tjeldsund,2026-11-21T11:07:30+00:00
 "Sarpsborg, Østfold | Henry Fyhns vei 9, 1725 SARPSBORG",found,address,59.282089099320075,11.09250496736802,"Henry Fyhns vei 9, 1725 SARPSBORG",Adresse,Sarpsborg,2026-11-21T10:42:04+00:00
 "Sauda, Rogaland | Åbødalsvn. 81, 4200 SAUDA",found,address,59.65668289785649,6.362704418135049,"Åbødalsveien 81, 4200 SAUDA",Adresse,Sauda,2026-11-21T10:40:54+00:00
 "Selbu, Trøndelag | Postboks 31, 7581 SELBU",found,place,63.2177,11.03938,Selbu kommune,Kommune,Selbu,2026-11-21T10:41:14+00:00
 "Selje, Sogn og Fjordane | Boks 94, 6741 SELJE",found,place,62.0444,5.34739,Selje,Tettsted,Stad,2026-11-21T10:41:31+00:00
 "Seljord, Telemark | Ingrid Slettens veg 14 A, 3840 SELJORD",found,address,59.48155281835772,8.631583751817006,"Ingrid Slettens veg 14A, 3840 SELJORD",Adresse,Seljord,2026-11-21T10:41:43+00:00
 "Sigdal, Buskerud",found,,60.04591,9.63673,Sigdal kommune,Kommune,Sigdal,2026-11-20T22:54:47+00:00
+"Siljan, Telemark | Opdalsveien 16, Siljan",found,place,59.28251,9.73368,Siljan,Kommune,Siljan,2026-11-21T11:06:42+00:00
 "Skedsmo, Akershus | Stortorget 24, 2000 LILLESTRØM",found,address,59.95867740127127,11.051840359917259,"Stortorget 24, 2000 LILLESTRØM",Adresse,Lillestrøm,2026-11-21T10:39:24+00:00
 "Ski, Akershus | Fjellklangveien 3, 1406 SKI",found,address,59.7275527999438,10.827083784669753,"Fjellklangveien 3, 1423 SKI",Adresse,Nordre Follo,2026-11-21T10:39:24+00:00
 "Skien, Telemark | Steinbruddet 7, 3718 SKIEN",found,address,59.2020945307224,9.586537834573464,"Steinbruddet 7, 3718 SKIEN",Adresse,Skien,2026-11-21T10:41:43+00:00
 "Skiptvet, Østfold | Storveien 8, 1816 SKIPTVET",found,address,59.473781056532204,11.162164540915187,"Storveien 8, 1816 SKIPTVET",Adresse,Skiptvet,2026-11-21T10:42:04+00:00
 "Skjåk, Oppland | Nordberg Solside 107, 2690 SKJÅK",found,address,61.89803691569598,8.24263131994334,"Nordberg solside 107, 2690 SKJÅK",Adresse,Skjåk,2026-11-21T10:40:43+00:00
-"Skjånes, Finnmark | 9771 SKJÅNES",found,place,70.80062,28.10069,Skjånes,Bygdelag (bygd),Gamvik,2026-11-21T10:39:40+00:00
+"Skjånes, Finnmark | 9771 SKJÅNES",found,place,70.80062,28.10069,Skjånes,Bygdelag (bygd),Gamvik,2026-11-21T11:07:16+00:00
 "Skodje, Møre og Romsdal | Skodjevegen 427, 6260 SKODJE",found,address,62.50377213023185,6.697993385416481,"Skodjevegen 427, 6260 SKODJE",Adresse,Ålesund,2026-11-21T10:40:16+00:00
 "Skorovas, Trøndelag | Bergmannsveien 2, 7893 SKOROVATN",found,address,64.64332760590851,13.119466430965192,"Bergmannsveien 2, 7893 SKOROVATN",Adresse,Namsskogan,2026-11-21T10:41:03+00:00
 "Snåsa, Trøndelag | 7760 SNÅSA",found,place,64.24557,12.38181,Snåsa,Tettsted,Snåase - Snåsa,2026-11-21T10:41:04+00:00
 "Sogndal, Sogn og Fjordane | Granden 43, 6856 SOGNDAL",found,address,61.22744290075608,7.100176555777491,"Granden 43, 6856 SOGNDAL",Adresse,Sogndal,2026-11-21T10:41:31+00:00
-"Soknedal-Budal, Trøndelag | 7288 SOKNEDAL",found,place,62.95096,10.18807,Soknedal,Bygdelag (bygd),Midtre Gauldal,2026-11-21T10:41:15+00:00
+"Soknedal-Budal, Trøndelag | 7288 SOKNEDAL",found,place,62.95096,10.18807,Soknedal,Bygdelag (bygd),Midtre Gauldal,2026-11-21T11:07:25+00:00
 "Sola, Rogaland | Stangelandsvegen 26, 4051 SOLA",found,address,58.8690251518123,5.661707387769836,"Stangelandsvegen 26, 4051 SOLA",Adresse,Sola,2026-11-21T10:40:55+00:00
 "Solør, Hedmark | Frøyas gate 6, 2270 FLISA",found,address,60.61062493369326,12.005758765830429,"Frøyas gate 6, 2270 FLISA",Adresse,Åsnes,2026-11-21T10:39:52+00:00
 "Songdalen, Agder | Songdalsvegen 48, Boks 36, 4685 NODELAND",found,address,58.1525474663167,7.838076115896211,"Songdalsvegen 48, 4645 NODELAND",Adresse,Kristiansand,2026-11-21T10:39:14+00:00
@@ -233,7 +237,7 @@ query,status,method,latitude,longitude,matched_name,place_type,municipality,fetc
 "Vang, Hedmark | Kåtorpgrenda 31, 2322 RIDABU",found,address,60.81195397180159,11.1459006344552,"Kåtorpgrenda 31, 2322 RIDABU",Adresse,Hamar,2026-11-21T10:39:56+00:00
 "Vardø, Finnmark | Postboks 252, 9951 VARDØ",found,place,70.37052,31.10954,Vardø,By,Vardø,2026-11-21T10:39:42+00:00
 "Vatne og Tennfjord, Møre og Romsdal | Boks 170, 6283 VATNE",found,place,62.55826,6.61708,Vatne,Tettsted,Haram,2026-11-21T10:40:17+00:00
-"Vats, Buskerud | 3570 ÅL",found,place,60.68891,8.35931,Vats,Bygdelag (bygd),Ål,2026-11-21T10:39:33+00:00
+"Vats, Buskerud | 3570 ÅL",found,place,60.68891,8.35931,Vats,Bygdelag (bygd),Ål,2026-11-21T11:07:14+00:00
 "Vennesla, Agder | Koldalsvn. 26 Boks 190, 4703 VENNESLA",found,address,58.26915542254496,7.974529720932984,"Koldalsvegen 26A, 4700 VENNESLA",Adresse,Vennesla,2026-11-21T10:39:15+00:00
 "Vestby og Ås, Akershus | Langbakken 20, 1430 ÅS",found,address,59.66940189389138,10.795218967376062,"Langbakken 20, 1434 ÅS",Adresse,Ås,2026-11-21T10:39:25+00:00
 "Vik, Sogn og Fjordane | Postboks 46, 6891 VIK I SOGN",found,place,61.08743,6.57911,Vik,Tettsted,Vik,2026-11-21T10:41:33+00:00
@@ -246,7 +250,7 @@ query,status,method,latitude,longitude,matched_name,place_type,municipality,fetc
 "Vågå, Oppland | Industrivn.039, 2680 VÅGÅ",found,address,61.873225930399634,9.105219576827395,"Industrivegen 39, 2680 VÅGÅ",Adresse,Vågå,2026-11-21T10:40:46+00:00
 "Åfjord, Trøndelag | Prestgårdshaugen 11, 7170 ÅFJORD",found,address,63.96985747290408,10.222362318981839,"Prestgårdshaugen 11, 7170 ÅFJORD",Adresse,Åfjord,2026-11-21T10:41:16+00:00
 "Ål, Buskerud | Oppsjøvegen 1, 3570 ÅL",found,address,60.627745398181816,8.567595968168433,"Oppsjøvegen 1, 3570 ÅL",Adresse,Ål,2026-11-21T10:39:33+00:00
-"Ålen, Trøndelag | 7380 ÅLEN",found,place,62.84185,11.3013,Ålen,Bygdelag (bygd),Holtålen,2026-11-21T10:41:16+00:00
+"Ålen, Trøndelag | 7380 ÅLEN",found,place,62.84185,11.3013,Ålen,Bygdelag (bygd),Holtålen,2026-11-21T11:07:26+00:00
 "Ålvik, Hordaland | Boks 69, 5614 ÅLVIK",found,place,60.43274,6.43164,Ålvik,Tettsted,Kvam,2026-11-21T10:40:14+00:00
 "Årdal, Sogn og Fjordane | c/o Ingrid Norbye-Antonsen, Dalavegen 44 A, 6885 ÅRDALSTANGEN",found,address,61.257491957278155,7.654369744912827,"Dalavegen 44A, 6885 ÅRDALSTANGEN",Adresse,Årdal,2026-11-21T10:41:34+00:00
 "Øksnes, Nordland | Fru Ingeborgsv. 9, 8430 MYRE",found,address,68.91277524152963,15.085500878654265,"Fru Ingeborgsvei 9, 8430 MYRE",Adresse,Øksnes,2026-11-21T10:40:29+00:00

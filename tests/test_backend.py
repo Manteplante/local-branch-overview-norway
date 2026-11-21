@@ -143,6 +143,35 @@ def test_geocodes_fill_only_missing_coordinates() -> None:
     assert by_slug.loc["flatanger", "location_source"] == "none"
 
 
+def test_shared_site_coordinates_across_districts_are_placeholders() -> None:
+    raw = raw_rows()
+    flatanger = raw["branch_slug"] == "flatanger"
+    arendal = raw["branch_slug"] == "arendal"
+    # Flatanger (Trøndelag) gets Arendal's (Agder) exact point: a stand-in
+    raw.loc[flatanger, ["latitude", "longitude"]] = (
+        raw.loc[arendal, ["latitude", "longitude"]].iloc[0].values
+    )
+
+    by_slug = transform.build_tables(raw)["branches"].set_index("branch_slug")
+
+    assert by_slug.loc["arendal", "location_source"] == "none"
+    assert by_slug.loc["flatanger", "location_source"] == "none"
+    assert pd.isna(by_slug.loc["flatanger", "latitude"])
+
+
+def test_shared_site_coordinates_within_a_district_are_kept() -> None:
+    raw = raw_rows()
+    grimstad = raw["branch_slug"] == "grimstad"
+    arendal = raw["branch_slug"] == "arendal"
+    raw.loc[grimstad, ["latitude", "longitude"]] = (
+        raw.loc[arendal, ["latitude", "longitude"]].iloc[0].values
+    )
+
+    by_slug = transform.build_tables(raw)["branches"].set_index("branch_slug")
+
+    assert set(by_slug.loc[["arendal", "grimstad"], "location_source"]) == {"site"}
+
+
 def test_manual_overrides_beat_every_source() -> None:
     geocodes = {
         "Grimstad, Agder | Frivoldveien 11, 4877 GRIMSTAD": GeocodeResult(

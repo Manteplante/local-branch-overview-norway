@@ -16,6 +16,10 @@ Most branch pages on rodekors.no have an address but no map coordinates.
 - Addresses are often a PO box ("Boks 195, 4558 VANSE"), use abbreviations
   ("Heimdalsgt. 3", "Sentrumsvn. 72"), name a person ("c/o …", "v/ …"), or carry a postcode
   that changed when municipalities merged.
+- **Some site coordinates are a placeholder**: a shared point in central Oslo (59.9155,
+  10.7578) for Karasjok, Nordkapp, Bø (Nordland) and Siljan in 2026-11. Site coordinates
+  shared by branches in *different* districts are therefore treated as missing
+  (`transform.placeholder_coordinates`), and those branches are geocoded like the rest.
 - An earlier note here said the site had stopped publishing addresses. That was based on
   the 35-branch sample of 2026-11-11 and does not hold for the full scrape.
 
@@ -65,6 +69,8 @@ Most branch pages on rodekors.no have an address but no map coordinates.
      `By > Tettsted > Bydel > Tettbebyggelse > Kommune > Bygdelag (bygd) >
      Annen administrativ inndeling`. Churches, farms, fjords etc. are ignored. The last type
      is how Kartverket lists **former municipalities** (Voss, Os, Gaular, "Skedsmo kommune").
+     - A hamlet (`Bygdelag (bygd)`) loses to a municipality with exactly the same name:
+       "Bø" in Nordland is Bø kommune in Vesterålen, not the Bø hamlet in Steigen.
      - Two-name branches are placed at the first part that matches; the popup shows the
        full name ("Øyer Tretten" → Øyer, "Soknedal-Budal" → Soknedal).
      - Parts are split on ` og `, `/`, `-` and spaces, phrases before single words
@@ -79,8 +85,8 @@ Most branch pages on rodekors.no have an address but no map coordinates.
        (Nedre + Øvre) is rejected.
      - A part only takes its exact `<part> kommune`, so "Eiker" can't drift to Øvre Eiker.
   5. Else a miss, for `data/overrides.csv`.
-- Full scrape (2026-11-21): out of 347 branches, 88 have site coordinates, **146 are placed
-  at their street address**, 109 at a place, and 4 have none from geocoding. Those 4 are
+- Full scrape (2026-11-21): out of 347 branches, 84 have usable site coordinates, **146 are
+  placed at their street address**, 113 at a place, and 4 have none from geocoding. Those 4 are
   filled in by hand in `data/overrides.csv` (`manual`), so all 347 are on the map:
   - Odal: no address
   - Finse: post code only

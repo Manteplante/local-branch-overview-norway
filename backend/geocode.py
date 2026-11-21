@@ -36,6 +36,7 @@ ADDRESS_URL = "https://api.kartverket.no/adresser/v1/sok"
 MIN_DELAY_SECONDS = 0.5  # no published rate limit; stay polite
 
 FORMER_MUNICIPALITY = "Annen administrativ inndeling"  # Skedsmo, Voss, Os, ...
+HAMLET = "Bygdelag (bygd)"
 
 # Place types that stand for a settlement, best first. Churches, farms, fjords etc. are
 # skipped: "Flatanger" alone only matches the church, "Heim" a farm.
@@ -45,7 +46,7 @@ PLACE_TYPES = [
     "Bydel",
     "Tettbebyggelse",
     "Kommune",
-    "Bygdelag (bygd)",
+    HAMLET,
     FORMER_MUNICIPALITY,
 ]
 _TYPE_RANK = {t: i for i, t in enumerate(PLACE_TYPES)}
@@ -349,6 +350,11 @@ class KartverketGeocoder:
         towns = [t for t in town_names(address.town) if t.casefold() not in seen]
         for name in names + towns:
             if hit := self._settlement(name, counties):
+                if hit.get("navneobjekttype") == HAMLET:
+                    # a hamlet loses to the municipality of the same name: "Bø" in
+                    # Nordland is Bø kommune (Vesterålen), not the Bø hamlet in Steigen
+                    found = self._search(f"{name} kommune", counties)
+                    hit = _municipality(found, name, exact_only=True) or hit
                 return hit
         if hit := _municipality(
             self._search(f"*{target.place} kommune", counties), target.place
