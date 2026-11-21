@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.1.0](https://github.com/Manteplante/local-branch-overview/compare/v1.0.0...v1.1.0) (2026-11-21)
+
+
+### Features
+
+* easier-to-hit map markers and an activity panel on hover/click ([cfe0fd9](https://github.com/Manteplante/local-branch-overview/commit/cfe0fd91de25c7a692b4a349b59d7bbff4fd88e0))
+* geocode branches by their street address first ([e3f3279](https://github.com/Manteplante/local-branch-overview/commit/e3f32797ad1d7e7f0fc9c3d98629882102e96b97))
+* geocode more branches: cross-county districts, former municipalities, name parts ([e3deb7f](https://github.com/Manteplante/local-branch-overview/commit/e3deb7f879c049e64459351a49e449c580cd955c))
+* hand-entered branch locations via data/overrides.csv ([5a9b0f4](https://github.com/Manteplante/local-branch-overview/commit/5a9b0f40775f8defd1c044b2c9613162433c7feb))
+* redesigned home and map pages with data-quality notes, credits and a specific-activity filter ([3f932bb](https://github.com/Manteplante/local-branch-overview/commit/3f932bbaaafcaeb16b52cfbc341798ba24bf2cb4))
+
+
+### Bug Fixes
+
+* ignore placeholder site coordinates and prefer namesake municipalities over hamlets ([af2475c](https://github.com/Manteplante/local-branch-overview/commit/af2475cf3a3f388cce09e56a1f18caf36a589e51))
+
+
+### Documentation
+
+* README with quick start, stack and sources; simpler data-quality doc and cheat sheet ([943e342](https://github.com/Manteplante/local-branch-overview/commit/943e342b31298a6d2bc7a98657dbfa02c4535ae9))
+
 ## [1.0.0](https://github.com/Manteplante/local-branch-overview/compare/v0.4.0...v1.0.0) (2026-11-20)
 
 
