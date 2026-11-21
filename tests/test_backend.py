@@ -364,3 +364,75 @@ def test_map_opens_on_the_mainland_even_with_svalbard() -> None:
     assert "78.22" in rendered  # the marker is there
     bounds = rendered.split("fitBounds(")[1].split(")")[0]
     assert "78.22" not in bounds
+
+
+def test_location_counts_has_every_source() -> None:
+    from backend.ui import location_counts
+
+    branches = pd.DataFrame(
+        {"location_source": ["address", "address", "place", "none"]}
+    )
+
+    assert location_counts(branches) == {
+        "address": 2, "site": 0, "place": 1, "manual": 0, "none": 1,
+    }  # fmt: skip
+    assert sum(location_counts(pd.DataFrame()).values()) == 0
+
+
+def test_approximate_markers_are_hollow() -> None:
+    branches, activities = map_tables()
+    branches.loc[branches.branch_slug == "arendal", "location_source"] = "place"
+
+    rendered = build_map(branches, activities).get_root().render()
+
+    assert '"approximate":true' in rendered
+    assert (
+        'APPROX = {radius: 8, color: COLOR, weight: 2.5, fillColor: "#ffffff"'
+        in rendered
+    )
+
+
+def test_filter_branches_by_specific_activity() -> None:
+    tables = transform.build_tables(raw_rows())
+    branches, activities = tables["branches"], tables["activities"]
+
+    found = filter_branches(
+        branches, activities=activities, activity_names=["Leksehjelp"]
+    )
+    assert set(found.branch_slug) == {"grimstad"}
+    both = filter_branches(
+        branches,
+        activities=activities,
+        activity_names=["Leksehjelp", "Hjelpekorpset i Arendal"],
+    )
+    assert set(both.branch_slug) == {"grimstad", "arendal"}
+    assert len(filter_branches(branches, activities=activities, activity_names=[])) == 3
+
+
+def test_activity_choices_count_branches_most_common_first() -> None:
+    from backend.ui import activity_choices
+
+    activities = pd.DataFrame(
+        {
+            "district_slug": ["a", "a", "a", "b", "b"],
+            "branch_slug": ["x", "x", "y", "z", "z"],
+            "activity": ["Besøksvenn", "Besøksvenn", "Besøksvenn", "Bruktbutikk", ""],
+        }
+    )
+
+    assert activity_choices(activities) == {"Besøksvenn": 2, "Bruktbutikk": 1}
+
+
+def test_selected_activities_are_highlighted_and_listed_first() -> None:
+    branches, activities = map_tables()
+
+    payload = branch_payloads(
+        branches, activities, highlight_activities=["Hjelpekorpset i Arendal"]
+    )[0]
+
+    first = payload["groups"][0]
+    assert first["items"][0] == {
+        "name": "Hjelpekorpset i Arendal", "text": first["items"][0]["text"], "highlight": True,
+    }  # fmt: skip
+    others = [i for g in payload["groups"][1:] for i in g["items"]]
+    assert not any(i["highlight"] for i in others)

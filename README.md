@@ -155,6 +155,10 @@ docs/                   Cheat sheet and the data-quality notes
   - Topographic map tiles: <https://cache.kartverket.no/>
 - **[Streamlit](https://streamlit.io/)** for the app, and **[folium](https://python-visualization.github.io/folium/)**
   / **[Leaflet](https://leafletjs.com/)** for the map.
+- **Home page illustration**: AI-generated with OpenAI's image model from the prompt
+  “Create an a PNG image 1920×1080 pixels of a fiord, cascades running down steep
+  mountains, and a small town in the mouth of the river that meets the fiord, using the
+  creative style of classic 90s disney movie”.
 
 ## More docs
 

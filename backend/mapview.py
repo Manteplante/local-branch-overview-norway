@@ -4,6 +4,7 @@ Markers and the panel are drawn by a small script inside the map (see `_SCRIPT`)
 hovering is instant and needs no Streamlit rerun:
 
 - markers sit on a canvas with a wide hit tolerance, so they are easy to hover and tap;
+  exact locations are filled dots, approximate ones (town centre) hollow rings;
 - hovering a marker shows the branch and its activities in a panel at the top left;
   clicking pins it there (× or a click on empty map unpins);
 - clusters break up into single markers from about city zoom.
@@ -48,12 +49,16 @@ def excerpt(text: str, limit: int = EXCERPT_CHARS) -> str:
     return f"{cut}…"
 
 
-def _activity_groups(rows: pd.DataFrame, highlight: set[str]) -> list[dict]:
+def _activity_groups(
+    rows: pd.DataFrame,
+    highlight: set[str],
+    highlight_activities: frozenset[str] | set[str] = frozenset(),
+) -> list[dict]:
     named = rows[rows["activity"].fillna("") != ""]
     groups = []
     for category, group in named.groupby("category", sort=False):
         items = [
-            {"name": str(a), "text": excerpt(d)}
+            {"name": str(a), "text": excerpt(d), "highlight": a in highlight_activities}
             for a, d in sorted(
                 zip(group["activity"], group["description"].fillna("")),
                 key=lambda pair: str(pair[0]).casefold(),
@@ -63,21 +68,30 @@ def _activity_groups(rows: pd.DataFrame, highlight: set[str]) -> list[dict]:
             {
                 "category": str(category),
                 "highlight": category in highlight,
-                "items": items,
+                "items": sorted(items, key=lambda i: not i["highlight"]),
             }
         )
-    # Categories picked in the sidebar first, then alphabetical.
-    return sorted(groups, key=lambda g: (not g["highlight"], g["category"].casefold()))
+
+    def picked(g: dict) -> bool:
+        return g["highlight"] or any(i["highlight"] for i in g["items"])
+
+    # Categories or activities picked in the sidebar first, then alphabetical.
+    return sorted(groups, key=lambda g: (not picked(g), g["category"].casefold()))
 
 
 def branch_payloads(
     branches: pd.DataFrame,
     activities: pd.DataFrame | None = None,
     highlight: Iterable[str] = (),
+    highlight_activities: Iterable[str] = (),
 ) -> list[dict]:
-    """One dict per branch *with a location*, as the map script expects it."""
+    """One dict per branch *with a location*, as the map script expects it.
+
+    `highlight` (categories) and `highlight_activities` (activity names) are listed
+    first and marked in the panel."""
     located = branches[branches["has_location"].astype(bool)]
     highlight = set(highlight)
+    highlight_activities = set(highlight_activities)
     by_branch = (
         dict(iter(activities.groupby(BRANCH_KEY, sort=False)))
         if activities is not None and not activities.empty
@@ -96,7 +110,7 @@ def branch_payloads(
                 "address": str(row.get("address") or ""),
                 "url": str(row.get("branch_url") or ""),
                 "approximate": row.get("location_source") == "place",
-                "groups": _activity_groups(rows, highlight),
+                "groups": _activity_groups(rows, highlight, highlight_activities),
             }
         )
     return payloads
@@ -143,6 +157,8 @@ _STYLE = """
 .lbo-panel ul { margin: 0; padding-left: 16px; }
 .lbo-panel li { margin: 2px 0 6px; }
 .lbo-panel li span { display: block; color: #3E4C59; }
+.lbo-panel li.lbo-hl-item strong { color: #C8102E; }
+.lbo-panel li.lbo-hl-item::marker { color: #C8102E; }
 .lbo-link { display: inline-block; margin-top: 8px; color: #C8102E; font-weight: 600; }
 """
 
@@ -152,7 +168,10 @@ _SCRIPT = """
   var cluster = {{ this.cluster_name }};
   var branches = {{ this.data }};
   var COLOR = {{ this.color }};
-  var BASE = {radius: 8, color: "#ffffff", weight: 1.5, fillColor: COLOR, fillOpacity: 0.9};
+  // exact locations: filled red dot; approximate (town centre): hollow red ring
+  var EXACT = {radius: 8, color: "#ffffff", weight: 1.5, fillColor: COLOR, fillOpacity: 0.9};
+  var APPROX = {radius: 8, color: COLOR, weight: 2.5, fillColor: "#ffffff", fillOpacity: 0.95};
+  function base(m) { return m.branch.approximate ? APPROX : EXACT; }
   var renderer = L.canvas({tolerance: 8});
   var pinned = null, hovered = null;
 
@@ -204,7 +223,7 @@ _SCRIPT = """
       box.appendChild(el("div", "lbo-cat" + (g.highlight ? " lbo-hl" : ""), g.category));
       var ul = el("ul");
       g.items.forEach(function (a) {
-        var li = el("li");
+        var li = el("li", a.highlight ? "lbo-hl-item" : null);
         li.appendChild(el("strong", null, a.name));
         if (a.text) li.appendChild(el("span", null, a.text));
         ul.appendChild(li);
@@ -221,8 +240,8 @@ _SCRIPT = """
 
   function paint(m) {
     var on = m === pinned || m === hovered;
-    m.setStyle(on ? {color: m === pinned ? "#1F2933" : "#7A0019", weight: 3} : BASE);
-    m.setRadius(on ? 11 : BASE.radius);
+    m.setStyle(on ? {color: m === pinned ? "#1F2933" : "#7A0019", weight: 3} : base(m));
+    m.setRadius(on ? 11 : base(m).radius);
     if (on) m.bringToFront();
   }
 
@@ -234,7 +253,8 @@ _SCRIPT = """
   }
 
   branches.forEach(function (b) {
-    var m = L.circleMarker([b.lat, b.lon], L.extend({renderer: renderer}, BASE));
+    var m = L.circleMarker([b.lat, b.lon], L.extend({renderer: renderer},
+      b.approximate ? APPROX : EXACT));
     m.branch = b;
     m.on("mouseover", function () { hovered = m; paint(m); show(b); });
     m.on("mouseout", function () {
@@ -281,9 +301,10 @@ def build_map(
     branches: pd.DataFrame,
     activities: pd.DataFrame | None = None,
     highlight: Iterable[str] = (),
+    highlight_activities: Iterable[str] = (),
 ) -> folium.Map:
     """A map of the branches that have coordinates, with the activity panel."""
-    payloads = branch_payloads(branches, activities, highlight)
+    payloads = branch_payloads(branches, activities, highlight, highlight_activities)
     fmap = folium.Map(
         location=NORWAY_CENTER,
         zoom_start=5,
