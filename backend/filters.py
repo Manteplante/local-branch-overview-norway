@@ -19,10 +19,17 @@ def filter_branches(
     districts: list[str] | None = None,
     categories: list[str] | None = None,
     search: str = "",
+    activity_names: list[str] | None = None,
+    activities: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     """Branches in any of `districts`, offering any of `categories`, matching `search`
-    (branch name, address or categories). Empty or None means "no filter"."""
+    (branch name, address or categories), and offering any of `activity_names` (looked
+    up in `activities`). Empty or None means "no filter"."""
     df = branches
+    if activity_names and activities is not None:
+        offering = activities[activities["activity"].isin(activity_names)]
+        keys = set(zip(offering["district_slug"], offering["branch_slug"]))
+        df = df[[k in keys for k in zip(df["district_slug"], df["branch_slug"])]]
     if districts:
         df = df[df["district"].isin(districts)]
     if categories:
