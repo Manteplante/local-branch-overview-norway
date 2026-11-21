@@ -1,7 +1,8 @@
 # Missing addresses and coordinates
 
-Status: **Kartverket place-name geocoding is built** (`make geocode`, `backend/geocode.py`). The other
-steps below are still a plan. Read this before touching geocoding, addresses or
+Status: **Kartverket place-name geocoding** (`make geocode`, `backend/geocode.py`) and
+**hand-entered locations** (`make overrides`, `backend/overrides.py`) are built. Reverse
+geocoding (step 1) is still a plan. Read this before touching geocoding, addresses or
 coordinates in `backend/transform.py`, the scraper or the map.
 
 ## The problem
@@ -82,13 +83,32 @@ Around November 2026, rodekors.no stopped publishing branch addresses. Found dur
   from names), the old row is left behind. Delete rows whose query no longer belongs to
   any branch.
 
+## Hand-entered locations
+
+For what neither the site nor Kartverket can place:
+
+1. `make overrides` adds every branch still without a location to the committed
+   `data/overrides.csv`, with empty `latitude` and `longitude`. It never changes or
+   reorders existing rows, so rerun it after each new scrape.
+2. Fill in `latitude, longitude` in decimal degrees **with a dot** (`58.4316, 8.7210`, as
+   Google Maps or norgeskart.no copy a point). `note` is free text, e.g. which place you
+   picked. Leave a row empty to skip it.
+3. `make transform` applies the filled rows as `location_source = manual`, which beats
+   `site` and `kartverket`.
+   - It stops with the CSV line number if a row has only one coordinate, a value that is not
+     a number (a comma decimal), a point outside Norway/Svalbard (lat 57–81, lon 4–32,
+     catches swapped values), or a duplicate branch.
+   - A row whose branch is no longer scraped only gives a warning.
+
+The key is `district_slug, branch_slug`. `branch` is there only so the file is readable.
+
 ## Plan: from most to least precise
 
 | Step | Applies to | Method | Precision | `location_source` |
 |---|---|---|---|---|
 | 1 | Has site coordinates | Keep them. Address via reverse geocoding: Kartverket `https://ws.geonorge.no/adresser/v1/punktsok` | exact | `site` (+ `reverse` for address) |
 | 2 | No coordinates | **Built**: Kartverket place-name geocoding via `make geocode` (`https://api.kartverket.no/stedsnavn/v1/navn`) | place or village centre | `kartverket` |
-| 3 | Still missing | Fill in by hand in a committed `data/overrides.csv` (`branch_slug, address, latitude, longitude`). Overrides beat every other source | exact | `manual` |
+| 3 | Still missing | **Built**: by hand in the committed `data/overrides.csv` via `make overrides` (see above). Overrides beat every other source | as entered | `manual` |
 | — | Nothing found | Keep the branch in the activity tables; leave it off the map | — | `none` |
 
 Supporting pieces:
@@ -111,6 +131,6 @@ Supporting pieces:
 - Kartverket publishes no rate limit for stedsnavn (no key or login is needed). We stay at
   ≤ 2 requests/s. Breaking API changes are announced 3 months ahead on
   https://status.kartverket.no. Before relying on `punktsok` (step 1), check its terms.
-- Two-name branches are handled by the name-parts fallback above. The 15 that still miss
-  (listed above) go to `data/overrides.csv` (step 3).
+- The 15 branches that still miss (listed above) are seeded in `data/overrides.csv`, with
+  their coordinates still to fill in.
 - Rerun `make fixtures` so the tests use pages without addresses.

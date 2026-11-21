@@ -4,7 +4,8 @@
 
 `branches`    one row per local branch, for the map. Coordinates the site lacks come
               from the geocode cache (`make geocode`, Kartverket place
-              names); `location_source` (site | kartverket | none) says which.
+              names) or by hand (`make overrides`); `location_source` (site | kartverket |
+              manual | none) says which.
 `activities`  one row per activity, with a `category` for filtering
 """
 
@@ -12,7 +13,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from . import config, storage
+from . import config, overrides, storage
 from .categories import categorize
 from .geocode import GeocodeResult, branch_query, load_cache
 
@@ -56,12 +57,14 @@ def build_activities(raw: pd.DataFrame) -> pd.DataFrame:
 
 
 def build_branches(
-    activities: pd.DataFrame, geocodes: dict[str, GeocodeResult] | None = None
+    activities: pd.DataFrame,
+    geocodes: dict[str, GeocodeResult] | None = None,
+    manual: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     """One row per branch, with its activity count and categories.
 
     Branches without site coordinates get them from `geocodes` (query -> result), if
-    there is a match; the site's own coordinates always win.
+    there is a match. `manual` (from `overrides.load_overrides`) beats every source.
     """
 
     def summarize(group: pd.DataFrame) -> pd.Series:
@@ -99,6 +102,16 @@ def build_branches(
             result.longitude,
             "kartverket",
         ]
+    if manual is not None and not manual.empty:
+        by_key = manual.set_index(BRANCH_KEY)
+        for i, key in zip(branches.index, zip(*(branches[k] for k in BRANCH_KEY))):
+            if key in by_key.index:
+                lat, lon = by_key.loc[key, ["latitude", "longitude"]]
+                branches.loc[i, ["latitude", "longitude", "location_source"]] = [
+                    lat,
+                    lon,
+                    "manual",
+                ]
     branches["has_location"] = branches["location_source"] != "none"
     columns = [
         "district",
@@ -118,7 +131,9 @@ def build_branches(
 
 
 def build_tables(
-    raw: pd.DataFrame, geocodes: dict[str, GeocodeResult] | None = None
+    raw: pd.DataFrame,
+    geocodes: dict[str, GeocodeResult] | None = None,
+    manual: pd.DataFrame | None = None,
 ) -> dict[str, pd.DataFrame]:
     """{table name: DataFrame} for the app."""
     activities = build_activities(raw)
@@ -126,7 +141,7 @@ def build_tables(
         "activities": activities.sort_values(
             ["district", "branch", "category", "activity"], ignore_index=True
         ),
-        "branches": build_branches(activities, geocodes),
+        "branches": build_branches(activities, geocodes, manual),
     }
 
 
@@ -140,7 +155,13 @@ def run() -> None:
 
     geocodes = load_cache()
     print(f"[transform] Read {len(raw):,} raw rows, {len(geocodes)} cached geocodes")
-    tables = build_tables(raw, geocodes)
+    try:
+        manual = overrides.load_overrides()
+    except overrides.OverrideError as exc:
+        raise SystemExit(f"[transform] {exc}") from None
+    tables = build_tables(raw, geocodes, manual)
+    for key in overrides.unknown_keys(manual, tables["branches"]):
+        print(f"  [warn] {config.OVERRIDES.name}: no scraped branch {key}, ignored")
     for name, df in tables.items():
         storage.save(name, df)
     counts = tables["branches"]["location_source"].value_counts().to_dict()

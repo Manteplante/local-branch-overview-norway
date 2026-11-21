@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 .PHONY: help sync hooks lint format format-check test lock-check pre-commit ci run scrape \
-	scrape-sample geocode geocode-retry transform report fixtures
+	scrape-sample geocode geocode-retry overrides transform report fixtures
 
 # `##@ Name` starts a group in `make help`; `target: ## text` lists a target in it.
 help: ## List targets
@@ -57,6 +57,9 @@ geocode: ## Geocode branches without coordinates via Kartverket place names (fre
 
 geocode-retry: ## Geocode again the branches cached as 'no match' (after matcher changes)
 	uv run python -m backend.geocode --retry-misses
+
+overrides: ## Add branches still without a location to data/overrides.csv, to fill in by hand
+	uv run python -m backend.overrides
 
 transform: ## Build the app tables in data/tables from data/raw
 	uv run python -m backend.transform
