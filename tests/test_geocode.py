@@ -16,6 +16,7 @@ from backend.geocode import (
     branch_target,
     geocode_missing,
     load_cache,
+    name_parts,
     save_cache,
 )
 
@@ -127,6 +128,81 @@ def test_exact_municipality_beats_suffix_matches() -> None:
     assert (result.matched_name, result.latitude) == ("Heim kommune", 63.3)
 
 
+def test_former_municipality_is_accepted() -> None:
+    former = "Annen administrativ inndeling"
+    g = geocoder(
+        names(place("Skedsmo", "Kirke")),
+        names(place("Skedsmo kommune", former, 59.96, 11.04)),
+    )
+
+    result = g.geocode(Target("Skedsmo, Akershus", "Skedsmo", ("32",)))
+
+    assert (result.matched_name, result.place_type) == ("Skedsmo kommune", former)
+
+
+def test_current_municipality_beats_former_one() -> None:
+    g = geocoder(
+        names(),
+        names(place("Os kommune", "Annen administrativ inndeling", 1, 1),
+              place("Os kommune", "Kommune", 2, 2)),
+    )  # fmt: skip
+    assert g.geocode(Target("Os", "Os", ("34",))).latitude == 2
+
+
+def test_ambiguous_former_and_current_municipality_rejected() -> None:
+    g = geocoder(
+        names(),
+        names(place("Nedre Eiker kommune", "Annen administrativ inndeling"),
+              place("Øvre Eiker kommune", "Kommune")),
+    )  # fmt: skip
+    assert g._find(Target("Eiker", "Eiker", ("33",))) is None
+
+
+@pytest.mark.parametrize(
+    ("name", "parts"),
+    [
+        ("Øyer Tretten", ["Øyer", "Tretten"]),
+        ("Høre/Vestre Slidre", ["Høre", "Vestre Slidre", "Slidre"]),
+        ("Soknedal-Budal", ["Soknedal", "Budal"]),
+        ("Furnes og Brumunddal", ["Furnes", "Brumunddal"]),
+        ("Nedre Eiker", ["Eiker"]),  # qualifier words are never searched alone
+        ("Bagn", []),
+    ],
+)
+def test_name_parts(name: str, parts: list[str]) -> None:
+    assert name_parts(name) == parts
+
+
+def test_two_name_branch_takes_first_part_that_matches() -> None:
+    g = geocoder(
+        names(), names(),  # "Furnes og Brumunddal" as a whole
+        names(), names(),  # "Furnes"
+        names(place("Brumunddal", "By", 60.88, 10.94)),
+    )  # fmt: skip
+
+    result = g.geocode(
+        Target("Furnes og Brumunddal, Hedmark", "Furnes og Brumunddal", ("34",))
+    )
+
+    assert result.matched_name == "Brumunddal"
+    assert [c["sok"] for c in g.session.calls] == [
+        "Furnes og Brumunddal",
+        "*Furnes og Brumunddal kommune",
+        "Furnes",
+        "Furnes kommune",  # a part only takes the exact municipality, no wildcard
+        "Brumunddal",
+    ]
+
+
+def test_part_never_drifts_to_a_neighbouring_municipality() -> None:
+    g = geocoder(
+        names(), names(),  # "Nedre Eiker" as a whole
+        names(),  # "Eiker"
+        names(place("Øvre Eiker kommune", "Kommune")),  # "Eiker kommune": not exact
+    )  # fmt: skip
+    assert g.geocode(Target("Nedre Eiker", "Nedre Eiker", ("33",))).status == "no_match"
+
+
 def test_og_names_fall_back_to_first_part() -> None:
     g = geocoder(names(), names(), names(place("Arna", "Bydel", 60.42, 5.47)))
 
@@ -211,12 +287,12 @@ def test_cache_round_trip(tmp_path: Path) -> None:
         (
             "Bagn Røde Kors",
             "Oppland Røde Kors",
-            Target("Bagn, Oppland", "Bagn", ("34",)),
+            Target("Bagn, Oppland", "Bagn", ("34", "32")),
         ),
         (
             "Flatanger",
             "Røde Kors i Trøndelag – Nord",
-            Target("Flatanger, Trøndelag", "Flatanger", ("50",)),
+            Target("Flatanger, Trøndelag", "Flatanger", ("50", "15")),
         ),
         ("Oslo Røde Kors", "Oslo Røde Kors", Target("Oslo", "Oslo", ("03",))),
         (
@@ -235,6 +311,21 @@ def test_cache_round_trip(tmp_path: Path) -> None:
             Target("Arna og Åsane, Hordaland", "Arna og Åsane", ("46",)),
         ),
         ("Foo Røde Kors", "Atlantis Røde Kors", Target("Foo, Atlantis", "Foo", ())),
+        (
+            "Olden Raude Kross",
+            "Sogn og Fjordane Røde Kors",
+            Target("Olden, Sogn og Fjordane", "Olden", ("46",)),
+        ),
+        (
+            "Saltdal Omsorg",
+            "Nordland Røde Kors",
+            Target("Saltdal, Nordland", "Saltdal", ("18",)),
+        ),
+        (
+            "Jevnaker Røde Kors",
+            "Oppland Røde Kors",
+            Target("Jevnaker, Oppland", "Jevnaker", ("34", "32")),
+        ),
     ],
 )
 def test_branch_target(branch: str, district: str, target: Target) -> None:
@@ -290,3 +381,19 @@ def test_main_saves_results_before_stopping_on_error(
     with pytest.raises(SystemExit, match="rerun to resume"):
         geocode.main([])
     assert set(load_cache(tmp_path / "cache.csv")) == {"Bagn, Oppland"}
+
+
+def test_retry_misses_requeries_only_no_match_rows() -> None:
+    found = GeocodeResult(
+        query="Bagn, Oppland", status="found", latitude=1, longitude=1
+    )
+    miss = GeocodeResult(query="Voss, Hordaland", status="no_match")
+    cache = {found.query: found, miss.query: miss}
+    voss = Target("Voss, Hordaland", "Voss", ("46",))
+    g = geocoder(names(place("Voss", "Annen administrativ inndeling", 60.63, 6.42)))
+
+    assert geocode_missing([BAGN, voss], g, cache, log=str).cached == 2  # default: skip
+    summary = geocode_missing([BAGN, voss], g, cache, retry_misses=True, log=str)
+
+    assert (summary.found, summary.cached) == (1, 1)
+    assert cache["Voss, Hordaland"].found and cache["Bagn, Oppland"] is found

@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 .PHONY: help sync hooks lint format format-check test lock-check pre-commit ci run scrape \
-	scrape-sample geocode transform report fixtures
+	scrape-sample geocode geocode-retry transform report fixtures
 
 # `##@ Name` starts a group in `make help`; `target: ## text` lists a target in it.
 help: ## List targets
@@ -54,6 +54,9 @@ scrape-sample: ## Test scrape: <=2 branches per district to data/sample (~10 min
 
 geocode: ## Geocode branches without coordinates via Kartverket place names (free)
 	uv run python -m backend.geocode
+
+geocode-retry: ## Geocode again the branches cached as 'no match' (after matcher changes)
+	uv run python -m backend.geocode --retry-misses
 
 transform: ## Build the app tables in data/tables from data/raw
 	uv run python -m backend.transform

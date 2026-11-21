@@ -36,19 +36,38 @@ Around November 2026, rodekors.no stopped publishing branch addresses. Found dur
 
 - `make geocode` builds the branch list from `RAW_DIR` and takes the branches without
   site coordinates. Each one becomes a `Target` (`branch_target`): the place (branch name
-  without "Røde Kors"), the cache key `"<place>, <county>"`, and the current county
-  number(s). Red Cross districts use pre-2024 county names, so `COUNTY_NUMBERS` maps them,
-  e.g. Oppland → 34 Innlandet. Rogaland → `11,42` because it includes Flekkefjord.
+  without "Røde Kors", "Raude Kross", "Hjelpekorps" or "Omsorg"), the cache key
+  `"<place>, <county>"`, and the current county number(s). Red Cross districts use the
+  pre-2024 county names, so `COUNTY_NUMBERS` maps them, e.g. Oppland → 34 Innlandet.
+  - Some districts reach past their old county, so they search two:
+    - Rogaland `11, 42`: Flekkefjord
+    - Oppland `34, 32`: Jevnaker and Lunner, now in Akershus
+    - Trøndelag `50, 15`: Surnadal
+    - Troms `55, 21`: Longyearbyen
 - It searches `https://api.kartverket.no/stedsnavn/v1/navn` within that county, waiting
   0.5 s between requests and sending the scraper's `User-Agent`:
   1. `<place>`: the best settlement by type, `By > Tettsted > Bydel > Tettbebyggelse >
-     Kommune > Bygdelag (bygd)`. Churches, farms, fjords etc. are ignored.
-  2. Else `*<place> kommune`: the exact `<place> kommune` if listed (Heim, not
-     Trondheim), otherwise only when exactly one municipality matches
-     (Flatanger, Gauldal → Midtre Gauldal).
-  3. Else, for "X og Y" names, steps 1–2 with "X" (Arna og Åsane → Arna, Bø og Sauherad → Bø).
+     Kommune > Bygdelag (bygd) > Annen administrativ inndeling`. Churches, farms, fjords
+     etc. are ignored. The last type is how Kartverket lists **former municipalities**
+     (Voss, Os, Gaular, "Skedsmo kommune").
+  2. Else `*<place> kommune`. The exact `<place> kommune` is used if it is listed (Heim,
+     not Trondheim), a current municipality before a former one. Otherwise a result is
+     used only when exactly one municipality matches (Flatanger, Gauldal → Midtre Gauldal).
+     "*Eiker kommune" (Nedre + Øvre) is rejected.
+  3. Else, for **two-name branches**, the first part that matches, so the marker sits at
+     one of the two places; the popup shows the full name. Examples:
+     "Øyer Tretten" → Øyer, "Soknedal-Budal" → Soknedal, "Furnes og Brumunddal" →
+     Brumunddal.
+     - Parts are split on ` og `, `/`, `-` and spaces, phrases before single words
+       (`name_parts`).
+     - Qualifier words (Nedre, Øvre, Vestre, …) are never searched alone.
+     - A part only takes a settlement or the **exact** `<part> kommune`, never the
+       wildcard rule, so "Eiker" can't drift to Øvre Eiker.
   4. Else a miss.
-  On `data/sample` (2026-11-20) this matched all 22 branches without site coordinates.
+- Full scrape (2026-11-21): out of 347 branches, 88 have site coordinates, 244 come from
+  Kartverket, and **15 have none**. Those 15 are regions or tiny places for
+  `data/overrides.csv`: Hisøy, Lista, Langfjord, Odal, Solør, Finse, Nordhordland,
+  Vossestrand, Leiranger, Nordfjord, Hedalen, Kverneland, Skorovas, Steinfjellet, Gjerpen.
 - A match is the centre of a town or municipality, **not an address**, so `address` stays
   as scraped.
 - Results, misses included, go to the committed cache `data/geocode_cache.csv`. Columns:
@@ -57,6 +76,11 @@ Around November 2026, rodekors.no stopped publishing branch addresses. Found dur
   coordinates always win.
 - `--dry-run` lists the queries without calling anything. A request error stops the run
   after saving what was found; rerun to resume. Tests use a fake session.
+- Misses are cached and not asked again. After changing the matcher, run
+  `make geocode-retry` (`--retry-misses`): it looks up only the cached misses and leaves
+  found rows as they are. If a branch's cache key changes (e.g. a new word is stripped
+  from names), the old row is left behind. Delete rows whose query no longer belongs to
+  any branch.
 
 ## Plan: from most to least precise
 
@@ -87,6 +111,6 @@ Supporting pieces:
 - Kartverket publishes no rate limit for stedsnavn (no key or login is needed). We stay at
   ≤ 2 requests/s. Breaking API changes are announced 3 months ahead on
   https://status.kartverket.no. Before relying on `punktsok` (step 1), check its terms.
-- Regional names are handled by the "X og Y" fallback above. A branch that still misses
-  goes to `data/overrides.csv` (step 3).
+- Two-name branches are handled by the name-parts fallback above. The 15 that still miss
+  (listed above) go to `data/overrides.csv` (step 3).
 - Rerun `make fixtures` so the tests use pages without addresses.

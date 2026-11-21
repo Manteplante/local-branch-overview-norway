@@ -12,7 +12,7 @@ query,status,latitude,longitude,matched_name,place_type,municipality,fetched_at
 "Bamble, Telemark",found,59.00159,9.746,Bamble,Kommune,Bamble,2026-11-20T22:57:04+00:00
 "Bardu, Troms",found,68.86058,18.35053,Bardu kommune,Kommune,Bardu,2026-11-20T22:57:17+00:00
 "Beiarn, Nordland",found,67.00725,14.57303,Beiarn kommune,Kommune,Beiarn,2026-11-20T22:55:41+00:00
-"Berg, Troms",no_match,,,,,,2026-11-20T22:57:18+00:00
+"Berg, Troms",found,69.44444,17.2995,Berg kommune,Annen administrativ inndeling,Senja,2026-11-21T10:11:05+00:00
 "Bergen, Hordaland",found,60.39323,5.3245,Bergen,By,Bergen,2026-11-20T22:55:16+00:00
 "Birtavarre, Troms",found,69.49517,20.83036,Birtavarre,Bygdelag (bygd),Gáivuotna - Kåfjord - Kaivuono,2026-11-20T22:57:19+00:00
 "Bokn, Rogaland",found,59.23061,5.43529,Bokn,Kommune,Bokn,2026-11-20T22:56:21+00:00
@@ -31,18 +31,18 @@ query,status,latitude,longitude,matched_name,place_type,municipality,fetched_at
 "Drangedal, Telemark",found,59.09744,9.05879,Drangedal,Tettsted,Drangedal,2026-11-20T22:57:06+00:00
 "Drøbak og Frogn, Akershus",found,59.66332,10.62974,Drøbak,By,Frogn,2026-11-20T22:54:22+00:00
 "Dønna, Nordland",found,66.10605,12.48188,Dønna kommune,Kommune,Dønna,2026-11-20T22:55:43+00:00
-"Eid, Sogn og Fjordane",no_match,,,,,,2026-11-20T22:56:50+00:00
+"Eid, Sogn og Fjordane",found,61.90684,5.99322,Eid kommune,Annen administrativ inndeling,Stad,2026-11-21T10:11:01+00:00
 "Eidfjord, Hordaland",found,60.4675,7.07193,Eidfjord,Tettsted,Eidfjord,2026-11-20T22:55:18+00:00
 "Eidsvoll og Hurdal, Akershus",found,60.33045,11.26161,Eidsvoll,Tettsted,Eidsvoll,2026-11-20T22:54:24+00:00
-"Eksingedalen og Modalen, Hordaland",no_match,,,,,,2026-11-20T22:55:20+00:00
+"Eksingedalen og Modalen, Hordaland",found,60.81735,5.80791,Modalen,Kommune,Modalen,2026-11-21T10:10:40+00:00
 "Elverum, Hedmark",found,60.88191,11.56231,Elverum,By,Elverum,2026-11-20T22:54:59+00:00
 "Enebakk, Akershus",found,59.76194,11.1475,Enebakk,Tettsted,Enebakk,2026-11-20T22:54:24+00:00
 "Etne, Hordaland",found,59.66528,5.93708,Etne,Tettsted,Etne,2026-11-20T22:55:21+00:00
 "Etnedal, Oppland",found,60.88872,9.64031,Etnedal kommune,Kommune,Etnedal,2026-11-20T22:55:59+00:00
 "Evje og Hornnes, Agder",found,58.58712,7.81049,Evje og Hornnes kommune,Kommune,Evje og Hornnes,2026-11-20T22:54:12+00:00
-"Fet, Akershus",no_match,,,,,,2026-11-20T22:54:25+00:00
+"Fet, Akershus",found,59.92216,11.16778,Fet kommune,Annen administrativ inndeling,Lillestrøm,2026-11-21T10:10:30+00:00
 "Finnsnes og Omegn, Troms",found,69.22961,17.98104,Finnsnes,By,Senja,2026-11-20T22:57:20+00:00
-"Finse, Hordaland",no_match,,,,,,2026-11-20T22:55:22+00:00
+"Finse, Hordaland",no_match,,,,,,2026-11-21T10:10:41+00:00
 "Fjaler, Sogn og Fjordane",found,61.36383,5.39812,Fjaler,Kommune,Fjaler,2026-11-20T22:56:50+00:00
 "Fjell, Hordaland",found,60.33039,5.07635,Fjell,Tettsted,Øygarden,2026-11-20T22:55:22+00:00
 "Flatanger, Trøndelag",found,64.50138,10.89483,Flatanger kommune,Kommune,Flatanger,2026-11-20T22:56:27+00:00
@@ -50,15 +50,15 @@ query,status,latitude,longitude,matched_name,place_type,municipality,fetched_at
 "Florø, Sogn og Fjordane",found,61.59955,5.03285,Florø,By,Kinn,2026-11-20T22:56:51+00:00
 "Flå, Buskerud",found,60.43023,9.46199,Flå,Tettbebyggelse,Flå,2026-11-20T22:54:36+00:00
 "Folldal og Sollia, Hedmark",found,62.13254,9.99681,Folldal,Tettsted,Folldal,2026-11-20T22:55:01+00:00
-"Furnes og Brumunddal, Hedmark",no_match,,,,,,2026-11-20T22:55:03+00:00
+"Furnes og Brumunddal, Hedmark",found,60.88362,10.94489,Brumunddal,By,Ringsaker,2026-11-21T10:10:36+00:00
 "Fusa, Hordaland",found,60.20372,5.62952,Fusa,Tettbebyggelse,Bjørnafjorden,2026-11-20T22:55:23+00:00
 "Fyresdal, Telemark",found,59.18343,8.0921,Fyresdal,Tettsted,Fyresdal,2026-11-20T22:57:07+00:00
 "Førde, Sogn og Fjordane",found,61.45217,5.85718,Førde,By,Sunnfjord,2026-11-20T22:56:51+00:00
-"Gaular, Sogn og Fjordane",no_match,,,,,,2026-11-20T22:56:52+00:00
+"Gaular, Sogn og Fjordane",found,61.32564,5.79527,Gaular,Annen administrativ inndeling,Sunnfjord,2026-11-21T10:11:01+00:00
 "Gauldal, Trøndelag",found,63.03641,10.28613,Midtre Gauldal kommune,Kommune,Midtre Gauldal,2026-11-20T22:56:36+00:00
 "Gausdal, Oppland",found,61.22685,10.22145,Gausdal kommune,Kommune,Gausdal,2026-11-20T22:56:00+00:00
 "Geilo, Buskerud",found,60.53372,8.20897,Geilo,Tettsted,Hol,2026-11-20T22:54:36+00:00
-"Gjerpen, Telemark",no_match,,,,,,2026-11-20T22:57:08+00:00
+"Gjerpen, Telemark",no_match,,,,,,2026-11-21T10:11:04+00:00
 "Gjøvik, Oppland",found,60.79574,10.69155,Gjøvik,By,Gjøvik,2026-11-20T22:56:00+00:00
 "Gloppen, Sogn og Fjordane",found,61.77729,6.21569,Gloppen,Kommune,Gloppen,2026-11-20T22:56:53+00:00
 "Gol og Hemsedal, Buskerud",found,60.70142,8.94551,Gol,Tettsted,Gol,2026-11-20T22:54:38+00:00
@@ -73,10 +73,10 @@ query,status,latitude,longitude,matched_name,place_type,municipality,fetched_at
 "Hammerfest, Finnmark",found,70.66336,23.68206,Hammerfest,By,Hammerfest,2026-11-20T22:54:51+00:00
 "Hasvik, Finnmark",found,70.48641,22.1611,Hasvik,Tettsted,Hasvik,2026-11-20T22:54:51+00:00
 "Havøysund, Finnmark",found,70.99633,24.66213,Havøysund,Tettsted,Måsøy,2026-11-20T22:54:52+00:00
-"Hedalen, Oppland",no_match,,,,,,2026-11-20T22:56:02+00:00
+"Hedalen, Oppland",no_match,,,,,,2026-11-21T10:10:48+00:00
 "Heim, Trøndelag",found,63.29102,9.08897,Heim kommune,Kommune,Heim,2026-11-20T22:56:37+00:00
 "Herøy, Nordland",found,65.98427,12.28915,Herøy kommune,Kommune,Herøy,2026-11-20T22:55:46+00:00
-"Hisøy, Agder",no_match,,,,,,2026-11-20T22:54:13+00:00
+"Hisøy, Agder",no_match,,,,,,2026-11-21T10:10:27+00:00
 "Hitra og Frøya, Trøndelag",found,63.60156,8.97416,Hitra kommune,Kommune,Hitra,2026-11-20T22:56:38+00:00
 "Hjartdal, Telemark",found,59.60073,8.65317,Hjartdal,Bygdelag (bygd),Hjartdal,2026-11-20T22:57:08+00:00
 "Hjelmeland, Rogaland",found,59.23693,6.17907,Hjelmeland,Tettbebyggelse,Hjelmeland,2026-11-20T22:56:22+00:00
@@ -84,11 +84,11 @@ query,status,latitude,longitude,matched_name,place_type,municipality,fetched_at
 "Hvaler, Østfold",found,59.02808,11.0311,Hvaler,Kommune,Hvaler,2026-11-20T22:57:33+00:00
 "Hyllestad, Sogn og Fjordane",found,61.17112,5.29606,Hyllestad,Tettsted,Hyllestad,2026-11-20T22:56:54+00:00
 "Hægebostad, Agder",found,58.37571,7.21974,Hægebostad kommune,Kommune,Hægebostad,2026-11-20T22:54:14+00:00
-"Høre/Vestre Slidre, Oppland",no_match,,,,,,2026-11-20T22:56:03+00:00
+"Høre/Vestre Slidre, Oppland",found,61.08842,8.98197,Vestre Slidre kommune,Kommune,Vestre Slidre,2026-11-21T10:10:51+00:00
 "Høyanger, Sogn og Fjordane",found,61.22348,6.08471,Høyanger,Tettsted,Høyanger,2026-11-20T22:56:55+00:00
 "Inderøy, Trøndelag",found,63.8761,11.28863,Inderøy kommune,Kommune,Inderøy,2026-11-20T22:56:29+00:00
-"Jevnaker, Oppland",no_match,,,,,,2026-11-20T22:56:04+00:00
-"Jølster, Sogn og Fjordane",no_match,,,,,,2026-11-20T22:56:56+00:00
+"Jevnaker, Oppland",found,60.23979,10.38709,Jevnaker,Tettsted,Jevnaker,2026-11-21T10:10:52+00:00
+"Jølster, Sogn og Fjordane",found,61.56918,6.48356,Jølster,Annen administrativ inndeling,Sunnfjord,2026-11-21T10:11:02+00:00
 "Karmøy, Rogaland",found,59.28081,5.30539,Karmøy,Kommune,Karmøy,2026-11-20T22:56:22+00:00
 "Kautokeino, Finnmark",found,69.01243,23.04101,Kautokeino,Tettsted,Guovdageaidnu - Kautokeino,2026-11-20T22:54:52+00:00
 "Kinsarvik, Hordaland",found,60.37567,6.71948,Kinsarvik,Tettsted,Ullensvang,2026-11-20T22:55:23+00:00
@@ -97,22 +97,22 @@ query,status,latitude,longitude,matched_name,place_type,municipality,fetched_at
 "Kragerø, Telemark",found,58.8693,9.41493,Kragerø,By,Kragerø,2026-11-20T22:57:09+00:00
 "Kristiansand, Agder",found,58.14615,7.99573,Kristiansand,By,Kristiansand,2026-11-20T22:54:14+00:00
 "Krødsherad, Buskerud",found,60.17943,9.62123,Krødsherad kommune,Kommune,Krødsherad,2026-11-20T22:54:41+00:00
-"Kverneland, Rogaland",no_match,,,,,,2026-11-20T22:56:23+00:00
+"Kverneland, Rogaland",no_match,,,,,,2026-11-21T10:10:55+00:00
 "Kvinesdal, Agder",found,58.29167,6.90833,Kvinesdal,Tettsted,Kvinesdal,2026-11-20T22:54:15+00:00
 "Kvæfjord, Troms",found,68.77201,16.17294,Kvæfjord kommune,Kommune,Kvæfjord,2026-11-20T22:57:21+00:00
 "Lakselv, Finnmark",found,70.0513,24.97173,Lakselv,Tettsted,Porsanger - Porsáŋgu - Porsanki,2026-11-20T22:54:53+00:00
 "Laksevåg, Hordaland",found,60.38893,5.29011,Laksevåg,Bydel,Bergen,2026-11-20T22:55:24+00:00
-"Langfjord, Finnmark",no_match,,,,,,2026-11-20T22:54:54+00:00
+"Langfjord, Finnmark",no_match,,,,,,2026-11-21T10:10:33+00:00
 "Leikanger, Sogn og Fjordane",found,61.18556,6.80454,Leikanger,Tettsted,Sogndal,2026-11-20T22:56:56+00:00
-"Leiranger, Nordland",no_match,,,,,,2026-11-20T22:55:47+00:00
+"Leiranger, Nordland",no_match,,,,,,2026-11-21T10:10:46+00:00
 "Lesja, Oppland",found,62.11837,8.86424,Lesja,Tettsted,Lesja,2026-11-20T22:56:04+00:00
 "Lierne, Trøndelag",found,64.46412,13.59248,Lierne kommune,Kommune,Lierne,2026-11-20T22:56:30+00:00
 "Lillesand, Agder",found,58.24945,8.37719,Lillesand,By,Lillesand,2026-11-20T22:54:15+00:00
 "Lindesnes, Agder",found,58.02635,7.45015,Lindesnes kommune,Kommune,Lindesnes,2026-11-20T22:54:16+00:00
-"Lista, Agder",no_match,,,,,,2026-11-20T22:54:17+00:00
+"Lista, Agder",no_match,,,,,,2026-11-21T10:10:28+00:00
 "Lom og Bøverdalen, Oppland",found,61.83772,8.56842,Lom,Tettsted,Lom,2026-11-20T22:56:06+00:00
-"Longyearbyen, Troms",no_match,,,,,,2026-11-20T22:57:22+00:00
-"Lunner, Oppland",no_match,,,,,,2026-11-20T22:56:07+00:00
+"Longyearbyen, Troms",found,78.22314,15.64686,Longyearbyen,By,Svalbard,2026-11-21T10:11:06+00:00
+"Lunner, Oppland",found,60.30674,10.58386,Lunner,Tettsted,Lunner,2026-11-21T10:10:52+00:00
 "Luster, Sogn og Fjordane",found,61.44322,7.45992,Luster,Tettsted,Luster,2026-11-20T22:56:57+00:00
 "Lyngdal, Agder",found,58.1376,7.07003,Lyngdal,By,Lyngdal,2026-11-20T22:54:17+00:00
 "Lyngen, Troms",found,69.57453,20.2192,Lyngen kommune,Kommune,Lyngen,2026-11-20T22:57:23+00:00
@@ -132,7 +132,7 @@ query,status,latitude,longitude,matched_name,place_type,municipality,fetched_at
 "Nannestad og Gjerdrum, Akershus",found,60.21707,11.012,Nannestad kommune,Kommune,Nannestad,2026-11-20T22:54:29+00:00
 "Narvik, Nordland",found,68.43828,17.42777,Narvik,By,Narvik,2026-11-20T22:55:48+00:00
 "Naustdal, Sogn og Fjordane",found,61.51108,5.71694,Naustdal,Tettsted,Sunnfjord,2026-11-20T22:56:58+00:00
-"Nedre Eiker, Buskerud",no_match,,,,,,2026-11-20T22:54:43+00:00
+"Nedre Eiker, Buskerud",found,59.75023,10.00736,Nedre Eiker kommune,Annen administrativ inndeling,Drammen,2026-11-21T10:10:32+00:00
 "Nes, Akershus",found,60.12251,11.4657,Nes kommune,Kommune,Nes,2026-11-20T22:54:30+00:00
 "Nes, Hedmark",found,60.7621,10.94127,Nes,Tettsted,Ringsaker,2026-11-20T22:55:05+00:00
 "Nesbyen, Buskerud",found,60.56809,9.10276,Nesbyen,Tettsted,Nesbyen,2026-11-20T22:54:43+00:00
@@ -142,27 +142,27 @@ query,status,latitude,longitude,matched_name,place_type,municipality,fetched_at
 "Nome, Telemark",found,59.27931,9.27088,Nome kommune,Kommune,Nome,2026-11-20T22:57:11+00:00
 "Nord-Aurdal, Oppland",found,60.98532,9.23664,Nord-Aurdal kommune,Kommune,Nord-Aurdal,2026-11-20T22:56:08+00:00
 "Nord-Fron, Oppland",found,61.59558,9.74827,Nord-Fron kommune,Kommune,Nord-Fron,2026-11-20T22:56:09+00:00
-"Nordfjord, Nordland",no_match,,,,,,2026-11-20T22:55:49+00:00
+"Nordfjord, Nordland",no_match,,,,,,2026-11-21T10:10:47+00:00
 "Nordfold, Nordland",found,67.76228,15.23021,Nordfolda,Bygdelag (bygd),Steigen,2026-11-20T22:55:50+00:00
-"Nordhordland, Hordaland",no_match,,,,,,2026-11-20T22:55:25+00:00
+"Nordhordland, Hordaland",no_match,,,,,,2026-11-21T10:10:42+00:00
 "Nordre Land, Oppland",found,60.83471,10.07544,Nordre Land kommune,Kommune,Nordre Land,2026-11-20T22:56:10+00:00
 "Nore og Uvdal, Buskerud",found,60.26706,8.94635,Nore og Uvdal kommune,Kommune,Nore og Uvdal,2026-11-20T22:54:44+00:00
 "Norheimsund, Hordaland",found,60.37089,6.14564,Norheimsund,Tettsted,Kvam,2026-11-20T22:55:25+00:00
 "Notodden, Telemark",found,59.55935,9.25853,Notodden,By,Notodden,2026-11-20T22:57:11+00:00
 "Nærbø, Rogaland",found,58.66546,5.63788,Nærbø,Tettsted,Hå,2026-11-20T22:56:24+00:00
-"Odal, Hedmark",no_match,,,,,,2026-11-20T22:55:06+00:00
-"Olden Raude Kross, Sogn og Fjordane",no_match,,,,,,2026-11-20T22:56:59+00:00
+"Odal, Hedmark",no_match,,,,,,2026-11-21T10:10:37+00:00
+"Olden, Sogn og Fjordane",found,61.8328,6.80804,Olden,Bygdelag (bygd),Stryn,2026-11-21T10:11:02+00:00
 "Oppdal, Trøndelag",found,62.59431,9.69121,Oppdal,Tettsted,Oppdal,2026-11-20T22:56:39+00:00
 "Orkland, Trøndelag",found,63.29962,9.84313,Orkland kommune,Kommune,Orkland,2026-11-20T22:56:40+00:00
 "Os, Hedmark",found,62.49649,11.22331,Os,Tettsted,Os,2026-11-20T22:55:06+00:00
-"Os, Hordaland",no_match,,,,,,2026-11-20T22:55:26+00:00
+"Os, Hordaland",found,60.18547,5.46965,Os,Annen administrativ inndeling,Bjørnafjorden,2026-11-21T10:10:43+00:00
 "Osterøy, Hordaland",found,60.52389,5.50554,Osterøy,Kommune,Osterøy,2026-11-20T22:55:27+00:00
 "Otta, Oppland",found,61.77124,9.53525,Otta,By,Sel,2026-11-20T22:56:11+00:00
 "Overhalla, Trøndelag",found,64.4936,11.94832,Overhalla,Bygdelag (bygd),Overhalla,2026-11-20T22:56:31+00:00
 "Porsgrunn, Telemark",found,59.13166,9.64665,Porsgrunn,By,Porsgrunn,2026-11-20T22:57:12+00:00
 "Rakkestad, Østfold",found,59.42181,11.35179,Rakkestad,Tettsted,Rakkestad,2026-11-20T22:57:37+00:00
 "Rana, Nordland",found,66.31121,14.13996,Rana kommune,Kommune,Rana,2026-11-20T22:55:51+00:00
-"Re, Vestfold",no_match,,,,,,2026-11-20T22:57:28+00:00
+"Re, Vestfold",found,59.35055,10.24764,Re kommune,Annen administrativ inndeling,Tønsberg,2026-11-21T10:11:06+00:00
 "Redalen, Oppland",found,60.89175,10.66685,Redalen,Bygdelag (bygd),Gjøvik,2026-11-20T22:56:11+00:00
 "Rendalen, Hedmark",found,61.89004,11.07694,Rendalen kommune,Kommune,Rendalen,2026-11-20T22:55:07+00:00
 "Rennebu, Trøndelag",found,62.87714,9.83957,Voll,Tettbebyggelse,Rennebu,2026-11-20T22:56:41+00:00
@@ -175,7 +175,6 @@ query,status,latitude,longitude,matched_name,place_type,municipality,fetched_at
 "Råde, Østfold",found,59.35174,10.87234,Råde,Tettsted,Råde,2026-11-20T22:57:38+00:00
 "Røros, Trøndelag",found,62.57427,11.38339,Røros,Tettsted,Røros,2026-11-20T22:56:42+00:00
 "Salangen, Troms",found,68.87669,17.83374,Salangen kommune,Kommune,Salangen,2026-11-20T22:57:25+00:00
-"Saltdal Omsorg, Nordland",no_match,,,,,,2026-11-20T22:55:53+00:00
 "Saltdal, Nordland",found,67.10144,15.39458,Saltdal kommune,Kommune,Saltdal,2026-11-20T22:55:52+00:00
 "Sande, Vestfold",found,59.58679,10.20808,Sande,Tettsted,Holmestrand,2026-11-20T22:57:29+00:00
 "Sandstrand, Troms",found,68.67824,16.78662,Sandstrand,Bygdelag (bygd),Dielddanuorri - Tjeldsund,2026-11-20T22:57:25+00:00
@@ -185,32 +184,32 @@ query,status,latitude,longitude,matched_name,place_type,municipality,fetched_at
 "Selje, Sogn og Fjordane",found,62.0444,5.34739,Selje,Tettsted,Stad,2026-11-20T22:56:59+00:00
 "Seljord, Telemark",found,59.48477,8.63017,Seljord,Tettsted,Seljord,2026-11-20T22:57:14+00:00
 "Sigdal, Buskerud",found,60.04591,9.63673,Sigdal kommune,Kommune,Sigdal,2026-11-20T22:54:47+00:00
-"Skedsmo, Akershus",no_match,,,,,,2026-11-20T22:54:31+00:00
+"Skedsmo, Akershus",found,59.95448,11.03952,Skedsmo kommune,Annen administrativ inndeling,Lillestrøm,2026-11-21T10:10:31+00:00
 "Ski, Akershus",found,59.7195,10.83575,Ski,By,Nordre Follo,2026-11-20T22:54:32+00:00
 "Skien, Telemark",found,59.20961,9.60901,Skien,By,Skien,2026-11-20T22:57:14+00:00
 "Skiptvet, Østfold",found,59.47691,11.16123,Skiptvet,Tettsted,Skiptvet,2026-11-20T22:57:39+00:00
 "Skjåk, Oppland",found,61.88349,8.2649,Skjåk kommune,Kommune,Skjåk,2026-11-20T22:56:13+00:00
 "Skjånes, Finnmark",found,70.80062,28.10069,Skjånes,Bygdelag (bygd),Gamvik,2026-11-20T22:54:56+00:00
 "Skodje, Møre og Romsdal",found,62.50468,6.69322,Skodje,Tettsted,Ålesund,2026-11-20T22:55:35+00:00
-"Skorovas, Trøndelag",no_match,,,,,,2026-11-20T22:56:32+00:00
+"Skorovas, Trøndelag",no_match,,,,,,2026-11-21T10:10:56+00:00
 "Snåsa, Trøndelag",found,64.24557,12.38181,Snåsa,Tettsted,Snåase - Snåsa,2026-11-20T22:56:33+00:00
 "Sogndal, Sogn og Fjordane",found,61.22908,7.09674,Sogndal,Tettsted,Sogndal,2026-11-20T22:57:00+00:00
-"Soknedal-Budal, Trøndelag",no_match,,,,,,2026-11-20T22:56:44+00:00
+"Soknedal-Budal, Trøndelag",found,62.95096,10.18807,Soknedal,Bygdelag (bygd),Midtre Gauldal,2026-11-21T10:11:00+00:00
 "Sola, Rogaland",found,58.88855,5.65289,Sola,Tettsted,Sola,2026-11-20T22:56:25+00:00
-"Solør, Hedmark",no_match,,,,,,2026-11-20T22:55:09+00:00
-"Songdalen, Agder",no_match,,,,,,2026-11-20T22:54:19+00:00
+"Solør, Hedmark",no_match,,,,,,2026-11-21T10:10:38+00:00
+"Songdalen, Agder",found,58.15272,7.83678,Songdalen kommune,Annen administrativ inndeling,Kristiansand,2026-11-21T10:10:29+00:00
 "Spydeberg, Østfold",found,59.61708,11.08558,Spydeberg,Tettsted,Indre Østfold,2026-11-20T22:57:39+00:00
 "Stange, Hedmark",found,60.71804,11.19414,Stange,Tettsted,Stange,2026-11-20T22:55:10+00:00
 "Stavanger, Rogaland",found,58.96896,5.72942,Stavanger,By,Stavanger,2026-11-20T22:56:25+00:00
 "Steigen, Nordland",found,67.77625,15.01621,Steigen kommune,Kommune,Steigen,2026-11-20T22:55:54+00:00
-"Steinfjellet, Trøndelag",no_match,,,,,,2026-11-20T22:56:34+00:00
+"Steinfjellet, Trøndelag",no_match,,,,,,2026-11-21T10:10:57+00:00
 "Stor-Elvdal, Hedmark",found,61.57198,11.04758,Stor-Elvdal kommune,Kommune,Stor-Elvdal,2026-11-20T22:55:11+00:00
 "Stord, Hordaland",found,59.78082,5.49966,Stord,By,Stord,2026-11-20T22:55:27+00:00
 "Stryn, Sogn og Fjordane",found,61.90259,6.7179,Stryn,Tettsted,Stryn,2026-11-20T22:57:00+00:00
 "Suldal, Rogaland",found,59.48573,6.25224,Suldal,Kommune,Suldal,2026-11-20T22:56:26+00:00
 "Sulitjelma, Nordland",found,67.13303,16.07661,Sulitjelma,Tettsted,Fauske - Fuossko,2026-11-20T22:55:55+00:00
-"Sund, Hordaland",no_match,,,,,,2026-11-20T22:55:28+00:00
-"Surnadal, Trøndelag",no_match,,,,,,2026-11-20T22:56:45+00:00
+"Sund, Hordaland",found,60.27019,5.07228,Sund,Annen administrativ inndeling,Øygarden,2026-11-21T10:10:44+00:00
+"Surnadal, Trøndelag",found,62.97389,8.72634,Surnadal,Tettsted,Surnadal,2026-11-21T10:11:00+00:00
 "Svelgen, Sogn og Fjordane",found,61.76976,5.29544,Svelgen,Tettsted,Bremanger,2026-11-20T22:57:01+00:00
 "Søgne, Agder",found,58.09328,7.78294,Søgne,Tettsted,Kristiansand,2026-11-20T22:54:20+00:00
 "Søndre Land, Oppland",found,60.69943,10.35086,Søndre Land kommune,Kommune,Søndre Land,2026-11-20T22:56:14+00:00
@@ -219,7 +218,7 @@ query,status,latitude,longitude,matched_name,place_type,municipality,fetched_at
 "Sør-Varanger, Finnmark",found,69.72861,30.04196,Sør-Varanger kommune,Kommune,Sør-Varanger,2026-11-20T22:54:57+00:00
 "Talvik, Finnmark",found,70.04247,22.94985,Talvik,Tettsted,Alta,2026-11-20T22:54:57+00:00
 "Tjeldsund, Troms",found,68.58351,16.57296,Tjeldsund kommune,Kommune,Dielddanuorri - Tjeldsund,2026-11-20T22:57:27+00:00
-"Tjøme og Hvasser, Vestfold",no_match,,,,,,2026-11-20T22:57:31+00:00
+"Tjøme og Hvasser, Vestfold",found,59.11088,10.39326,Tjøme kommune,Annen administrativ inndeling,Færder,2026-11-21T10:11:08+00:00
 "Tokke, Telemark",found,59.44568,8.01387,Tokke kommune,Kommune,Tokke,2026-11-20T22:57:16+00:00
 "Tolga, Hedmark",found,62.40899,10.99877,Tolga,Tettsted,Tolga,2026-11-20T22:55:12+00:00
 "Tresfjord og Vestnes, Møre og Romsdal",found,62.52492,7.12579,Tresfjorden,Bygdelag (bygd),Vestnes,2026-11-20T22:55:37+00:00
@@ -238,11 +237,11 @@ query,status,latitude,longitude,matched_name,place_type,municipality,fetched_at
 "Vestby og Ås, Akershus",found,59.60511,10.75233,Vestby,Tettsted,Vestby,2026-11-20T22:54:34+00:00
 "Vik, Sogn og Fjordane",found,61.08743,6.57911,Vik,Tettsted,Vik,2026-11-20T22:57:01+00:00
 "Vikane, Sogn og Fjordane",found,60.51198,5.22949,Vikane,Tettbebyggelse,Alver,2026-11-20T22:57:02+00:00
-"Vikna, Trøndelag",no_match,,,,,,2026-11-20T22:56:35+00:00
+"Vikna, Trøndelag",found,64.87112,11.23921,Vikna kommune,Annen administrativ inndeling,Nærøysund,2026-11-21T10:10:58+00:00
 "Vindafjord, Rogaland",found,59.60543,5.80785,Vindafjord,Kommune,Vindafjord,2026-11-20T22:56:26+00:00
-"Voss, Hordaland",no_match,,,,,,2026-11-20T22:55:31+00:00
-"Vossestrand, Hordaland",no_match,,,,,,2026-11-20T22:55:32+00:00
-"Vågsøy, Sogn og Fjordane",no_match,,,,,,2026-11-20T22:57:03+00:00
+"Voss, Hordaland",found,60.6278,6.41833,Voss,Annen administrativ inndeling,Voss,2026-11-21T10:10:44+00:00
+"Vossestrand, Hordaland",no_match,,,,,,2026-11-21T10:10:45+00:00
+"Vågsøy, Sogn og Fjordane",found,61.93544,5.11404,Vågsøy kommune,Annen administrativ inndeling,Kinn,2026-11-21T10:11:03+00:00
 "Vågå, Oppland",found,61.87564,9.09572,Vågå kommune,Kommune,Vågå,2026-11-20T22:56:17+00:00
 "Åfjord, Trøndelag",found,63.96068,10.22468,Åfjord,Tettsted,Åfjord,2026-11-20T22:56:46+00:00
 "Ål, Buskerud",found,60.63024,8.56071,Ål,Tettsted,Ål,2026-11-20T22:54:48+00:00
@@ -254,7 +253,7 @@ query,status,latitude,longitude,matched_name,place_type,municipality,fetched_at
 "Ørskog, Møre og Romsdal",found,62.48199,6.82032,Ørskog,Bygdelag (bygd),Ålesund,2026-11-20T22:55:39+00:00
 "Østre Toten, Oppland",found,60.67658,10.81997,Østre Toten kommune,Kommune,Østre Toten,2026-11-20T22:56:18+00:00
 "Øvre Eiker, Buskerud",found,59.77111,9.90841,Øvre Eiker kommune,Kommune,Øvre Eiker,2026-11-20T22:54:50+00:00
-"Øyer Tretten, Oppland",no_match,,,,,,2026-11-20T22:56:19+00:00
+"Øyer Tretten, Oppland",found,61.26309,10.41641,Øyer,Tettbebyggelse,Øyer,2026-11-21T10:10:54+00:00
 "Øygarden, Hordaland",found,60.36265,5.12196,Øygarden kommune,Kommune,Øygarden,2026-11-20T22:55:34+00:00
 "Øystese, Hordaland",found,60.38668,6.20074,Øystese,Tettsted,Kvam,2026-11-20T22:55:34+00:00
 "Øystre Slidre, Oppland",found,61.13377,9.07872,Øystre Slidre kommune,Kommune,Øystre Slidre,2026-11-20T22:56:20+00:00
