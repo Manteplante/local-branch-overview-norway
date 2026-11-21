@@ -1,159 +1,179 @@
-# Missing addresses and coordinates
+# Branch locations: where they come from
 
-Status: **Kartverket geocoding by street address, then by place** (`make geocode`,
-`backend/geocode.py`) and **hand-entered locations** (`make overrides`,
-`backend/overrides.py`) are built. Reverse geocoding (step 1 below) is still a plan. Read
-this before touching geocoding, addresses or coordinates in `backend/transform.py`, the
-scraper or the map.
+How every branch gets a point on the map, and what is still imperfect. Read this before
+changing geocoding, addresses or coordinates, in `backend/geocode.py`,
+`backend/transform.py`, `backend/overrides.py`, the scraper or the map.
 
-## The problem
+## Contents
 
-Most branch pages on rodekors.no have an address but no map coordinates.
+- [Summary](#summary)
+- [Why this is needed](#why-this-is-needed)
+- [Where a location comes from](#where-a-location-comes-from)
+- [How the Kartverket lookup works](#how-the-kartverket-lookup-works)
+- [Coordinates entered by hand](#coordinates-entered-by-hand)
+- [The cache](#the-cache)
+- [Decisions](#decisions)
+- [Known limits and ideas](#known-limits-and-ideas)
 
-- The full scrape (2026-11-20): 347 branches, **335 with an address**, **88 with
-  coordinates** (from the map marker). 252 of the 259 branches without coordinates have
-  an address.
-- Addresses are often a PO box ("Boks 195, 4558 VANSE"), use abbreviations
-  ("Heimdalsgt. 3", "Sentrumsvn. 72"), name a person ("c/o …", "v/ …"), or carry a postcode
-  that changed when municipalities merged.
-- **Some site coordinates are a placeholder**: a shared point in central Oslo (59.9155,
-  10.7578) for Karasjok, Nordkapp, Bø (Nordland) and Siljan in 2026-11. Site coordinates
-  shared by branches in *different* districts are therefore treated as missing
-  (`transform.placeholder_coordinates`), and those branches are geocoded like the rest.
-- An earlier note here said the site had stopped publishing addresses. That was based on
-  the 35-branch sample of 2026-11-11 and does not hold for the full scrape.
+## Summary
+
+Full scrape of November 2026, 347 branches. All of them are on the map.
+
+| `location_source` | Branches | What it means |
+|---|---|---|
+| `address` | 146 | The branch's street address, found in Kartverket's address register: the building |
+| `site` | 84 | The coordinates on the branch's own rodekors.no page |
+| `place` | 113 | A town, village or municipality matching the branch: its centre |
+| `manual` | 4 | Entered by hand in `data/overrides.csv` |
+| `none` | 0 | Not on the map (still listed in the tables) |
+
+## Why this is needed
+
+- **Most branch pages have an address but no coordinates.** 335 of 347 have an address;
+  only 88 have map coordinates.
+- **Addresses are messy.** Common problems:
+  - PO boxes ("Boks 195, 4558 VANSE")
+  - abbreviations ("Heimdalsgt. 3")
+  - a contact person ("c/o …", "v/ …")
+  - old postcodes from before municipalities merged
+- **Some site coordinates are fake.** Four branches (Karasjok, Nordkapp, Bø in Nordland,
+  Siljan) all pointed to one spot in central Oslo, a stand-in the site uses. Site
+  coordinates shared by branches in *different* districts are therefore ignored
+  (`transform.placeholder_coordinates`), and those branches are looked up like the rest.
+
+## Where a location comes from
+
+The first source that works wins:
+
+| Order | Source | Precision | `location_source` |
+|---|---|---|---|
+| 1 | Hand-entered coordinates (`data/overrides.csv`) | as entered | `manual` |
+| 2 | Coordinates on the branch page (unless they are a placeholder) | exact | `site` |
+| 3 | Kartverket: the street address | building | `address` |
+| 4 | Kartverket: a place for the branch | town or municipality centre | `place` |
+| — | Nothing found | not on the map | `none` |
+
+`make transform` applies this order, reading only committed files and never the network.
+Each branch's scraped `address` is kept as it is.
+
+## How the Kartverket lookup works
+
+`make geocode` (`backend/geocode.py`) looks up every branch without usable site
+coordinates. It uses two free Kartverket APIs that need no key, waits 0.5 s between
+requests, and sends the scraper's `User-Agent`.
+
+**Search area.** Each branch is searched within its county. Red Cross districts still use
+the pre-2024 counties, so `COUNTY_NUMBERS` maps them to today's numbers, e.g. Oppland →
+34 Innlandet. Four districts reach into a second county:
+
+| District | Also searches | For |
+|---|---|---|
+| Rogaland | Agder | Flekkefjord |
+| Oppland | Akershus | Jevnaker, Lunner |
+| Trøndelag | Møre og Romsdal | Surnadal |
+| Troms | Svalbard | Longyearbyen |
+
+**The steps, best first:**
+
+1. **Street address** ([adresser API](https://api.kartverket.no/adresser/v1/)).
+   - `parse_address` takes the street and house number, and the postcode and town. It
+     skips PO boxes, "c/o" and "v/" names, and text in brackets.
+   - The street is searched as a stem with a wildcard, so abbreviations still match
+     ("Heimdalsgt." → `Heimdals*`). It is searched in the post town first, then by
+     postcode.
+   - A hit needs the same house number, and a street name that starts with the stem. An
+     exact street name beats the rest. If different streets remain, the address step gives
+     up rather than guess.
+2. **The branch name as a settlement** ([stedsnavn API](https://api.kartverket.no/stedsnavn/v1/)).
+   - "Settlement" means these place types, best first: By, Tettsted, Bydel,
+     Tettbebyggelse, Kommune, Bygdelag, and former municipalities (listed as
+     "Annen administrativ inndeling"). Churches, farms, fjords etc. are ignored.
+   - Branch names are cleaned first: "Røde Kors", "Raude Kross", "Hjelpekorps" and
+     "Omsorg" are removed.
+   - A branch with two names is placed at the first one that matches ("Øyer Tretten" →
+     Øyer). The popup still shows the full name. Words like Nedre or Vestre are never
+     searched on their own.
+   - A hamlet (Bygdelag) loses to a municipality with exactly the same name: "Bø" in
+     Nordland is Bø kommune, not the hamlet Bø in Steigen.
+3. **The post town as a settlement.** This covers PO boxes: Lista → Vanse. It comes
+   after the branch name, so Arna og Åsane (post town Bergen) stays at Arna.
+4. **The branch name as a municipality** ("Flatanger" → Flatanger kommune).
+   - The exact name wins, so Heim doesn't become Trondheim.
+   - A near match counts only when it is the only one, so "*Eiker kommune" (both Nedre and
+     Øvre Eiker) is rejected.
+5. **Nothing found.** The branch goes to `data/overrides.csv`.
+
+## Coordinates entered by hand
+
+1. `make overrides` adds every branch still without a location to `data/overrides.csv`,
+   with empty `latitude` and `longitude`. It also removes empty rows for branches that
+   have been found since. It never changes rows you filled in.
+2. Fill in decimal degrees with a dot, latitude first (`60.3939, 11.5406`). `note` is free
+   text.
+3. `make transform` applies the rows. It stops and names the line if:
+   - only one coordinate is filled in
+   - a value isn't a number (a comma decimal, `60,39`)
+   - the point is outside Norway or Svalbard (lat 57–81, lon 4–32; catches swapped values)
+   - a branch appears twice
+
+   A row for a branch that is no longer on the site only gives a warning.
+
+Today's rows:
+
+| Branch | Why it needed a hand-entered location |
+|---|---|
+| Odal | No address on the site |
+| Finse | Postcode only |
+| Vossestrand | The street isn't in the address register |
+| Hedalen | A PO box, and "Hedalen" is a valley, not a settlement |
+
+## The cache
+
+- **What it holds.** `data/geocode_cache.csv` is committed and holds every lookup, misses
+  included, so `make transform` is fast and works offline.
+  - Key: `"<place>, <county> | <address>"`. A branch whose address changes is looked up
+    again.
+  - Columns:
+    - `status`: `found` or `no_match`
+    - `method`: `address` or `place`
+    - `matched_name`, `place_type`, `municipality`: what was matched
+- **Misses aren't looked up again** on their own. After changing the matcher, run
+  `make geocode-retry`.
+- **Unused rows.** `uv run python -m backend.geocode --prune` deletes rows no branch uses
+  any more, e.g. after a change to how cache keys are built.
+- **Other commands.** `uv run python -m backend.geocode --dry-run` lists the lookups
+  without any requests. A failed request stops the run but keeps what was found; run it
+  again to continue.
+- **Tests never call Kartverket.** They use a fake session.
 
 ## Decisions
 
-- **Keep scraping the coordinates.** They come from the branch page we already fetch, so no
-  extra request is needed, and they are the most accurate source we have. Scrape time comes
-  from the polite delays in `PoliteClient`, not from parsing.
-- **Fill in missing data in `backend/transform.py`, not in the scraper.** Changes to the
-  geocoding logic must not need a 2–3 h re-scrape.
-- **Geocode with Kartverket, and commit the results** (2026-11-20; replaces the Google
-  geocoder from 2026-11-11). Free and needs no key. It is open data, so caching and
-  committing the results is fine. The required "© Kartverket" attribution is already on
-  the map (`backend/mapview.py`). Google was dropped because it is billable and its terms
-  restrict showing results on a non-Google map and redistributing them.
-- **The street address comes first** (2026-11-21). It puts the marker on the building
+- **Scrape coordinates when the page has them.** They cost no extra request, and are the
+  most accurate source, unless they are a placeholder.
+- **Fix data in `transform` and `geocode`, not in the scraper.** A change to the matching
+  must not need a new 2–3 hour scrape.
+- **Kartverket, not Google** (2026-11-20).
+  - Kartverket is free, open data, so the results can be cached and committed. The
+    "© Kartverket" credit is already on the map.
+  - Google costs money, and its terms restrict showing results on a non-Google map and
+    sharing them.
+- **The street address comes first** (2026-11-21), so the marker sits on the building
   rather than at a town centre.
 
-## How it works now
+## Known limits and ideas
 
-- `make geocode` builds the branch list from `RAW_DIR` and takes the branches without
-  site coordinates. Each one becomes a `Target` (`branch_target`):
-  - the place: the branch name without "Røde Kors", "Raude Kross", "Hjelpekorps" or
-    "Omsorg"
-  - the scraped address
-  - the cache key `"<place>, <county> | <address>"`, so a changed address is looked up again
-  - the current county number(s). Red Cross districts use the pre-2024 county names, so
-    `COUNTY_NUMBERS` maps them, e.g. Oppland → 34 Innlandet. Some districts reach past
-    their old county and search two:
-    - Rogaland `11, 42`: Flekkefjord
-    - Oppland `34, 32`: Jevnaker and Lunner, now in Akershus
-    - Trøndelag `50, 15`: Surnadal
-    - Troms `55, 21`: Longyearbyen
-- It waits 0.5 s between requests and sends the scraper's `User-Agent`. It tries, best
-  first:
-  1. **Street address** (`https://api.kartverket.no/adresser/v1/sok`), `method = address`:
-     - `parse_address` takes the last `NNNN Town` part as the post code and town. The street
-       is the first other part with a house number.
-     - It skips `c/o`, `v/`, `Boks`, `Postboks`, `pb`, `Besøksadresse` and the branch's own
-       name, and drops trailing "Postboks …", "v/ …" and "( … )".
-     - The street is searched as a wildcard stem (`street_pattern`: "Heimdalsgt." →
-       `Heimdals*`) plus the number, first in the post town, then by post code.
-     - A hit needs the same house number (the letter too, if given; otherwise no letter is
-       preferred), and every such hit must be on one street.
-  2. **The branch name as a settlement** (`https://api.kartverket.no/stedsnavn/v1/navn`,
-     within the county), else one of its parts. The best type wins:
-     `By > Tettsted > Bydel > Tettbebyggelse > Kommune > Bygdelag (bygd) >
-     Annen administrativ inndeling`. Churches, farms, fjords etc. are ignored. The last type
-     is how Kartverket lists **former municipalities** (Voss, Os, Gaular, "Skedsmo kommune").
-     - A hamlet (`Bygdelag (bygd)`) loses to a municipality with exactly the same name:
-       "Bø" in Nordland is Bø kommune in Vesterålen, not the Bø hamlet in Steigen.
-     - Two-name branches are placed at the first part that matches; the popup shows the
-       full name ("Øyer Tretten" → Øyer, "Soknedal-Budal" → Soknedal).
-     - Parts are split on ` og `, `/`, `-` and spaces, phrases before single words
-       (`name_parts`). Qualifier words (Nedre, Øvre, Vestre, …) are never searched alone.
-  3. **The post town as a settlement**, e.g. for PO boxes: Lista → Vanse. "SANDE I
-     VESTFOLD" is tried as written, then as "Sande". This comes after the branch name, so
-     "Arna og Åsane" (post town Bergen) stays at Arna.
-  4. **The branch name as a municipality**: `*<place> kommune`.
-     - The exact `<place> kommune` wins (Heim, not Trondheim), a current municipality before
-       a former one.
-     - Otherwise only a single match counts (Gauldal → Midtre Gauldal). "*Eiker kommune"
-       (Nedre + Øvre) is rejected.
-     - A part only takes its exact `<part> kommune`, so "Eiker" can't drift to Øvre Eiker.
-  5. Else a miss, for `data/overrides.csv`.
-- Full scrape (2026-11-21): out of 347 branches, 84 have usable site coordinates, **146 are
-  placed at their street address**, 113 at a place, and 4 have none from geocoding. Those 4 are
-  filled in by hand in `data/overrides.csv` (`manual`), so all 347 are on the map:
-  - Odal: no address
-  - Finse: post code only
-  - Vossestrand: "Draugsvollsvegen 40" is not in the address register
-  - Hedalen: a PO box, and Hedalen is a valley, not a settlement
-- Steps 2–4 are `method = place`: the centre of a town or municipality. `address` stays
-  as scraped either way.
-- Results, misses included, go to the committed cache `data/geocode_cache.csv`. Columns:
-  `method`, `matched_name`, `place_type`, `municipality`. `make transform` reads only the
-  cache, never the network, and sets `location_source` to `site` / `address` / `place` /
-  `manual` / `none`. Site coordinates always win; hand-entered ones beat everything.
-- `--dry-run` lists the queries without calling anything. A request error stops the run
-  after saving what was found; rerun to resume. Tests use a fake session.
-- Misses are cached and not asked again. After changing the matcher, run
-  `make geocode-retry` (`--retry-misses`), which looks up only the cached misses.
-  When cache keys change, `make geocode -- --prune` (`--prune`) deletes the rows no
-  branch uses any more.
-
-## Hand-entered locations
-
-For what neither the site nor Kartverket can place:
-
-1. `make overrides` adds every branch still without a location to the committed
-   `data/overrides.csv`, with empty `latitude` and `longitude`. It drops empty rows for
-   branches that have a location by now, never changes filled rows, and keeps the order,
-   so rerun it after each new scrape or geocoding change.
-2. Fill in `latitude, longitude` in decimal degrees **with a dot** (`58.4316, 8.7210`, as
-   Google Maps or norgeskart.no copy a point). `note` is free text, e.g. which place you
-   picked. Leave a row empty to skip it.
-3. `make transform` applies the filled rows as `location_source = manual`, which beats
-   `site`, `address` and `place`.
-   - It stops with the CSV line number if a row has only one coordinate, a value that is not
-     a number (a comma decimal), a point outside Norway/Svalbard (lat 57–81, lon 4–32,
-     catches swapped values), or a duplicate branch.
-   - A row whose branch is no longer scraped only gives a warning.
-
-The key is `district_slug, branch_slug`. `branch` is there only so the file is readable.
-
-## Plan: from most to least precise
-
-| Step | Applies to | Method | Precision | `location_source` |
-|---|---|---|---|---|
-| 1 | Has site coordinates | Keep them. Address via reverse geocoding: Kartverket `https://ws.geonorge.no/adresser/v1/punktsok` | exact | `site` (+ `reverse` for address) |
-| 2 | No coordinates | **Built**: Kartverket via `make geocode`: street address (`adresser/v1/sok`), else place name (`stedsnavn/v1/navn`) | building, or town / municipality centre | `address` / `place` |
-| 3 | Still missing | **Built**: by hand in the committed `data/overrides.csv` via `make overrides` (see above). Overrides beat every other source | as entered | `manual` |
-| — | Nothing found | Keep the branch in the activity tables; leave it off the map | — | `none` |
-
-Supporting pieces:
-
-- **`location_source` column** in the `branches` table. The app shows approximate locations
-  (`place`) with a different marker, e.g. a hollow circle and "approximate location" in
-  the tooltip.
-- **Committed geocode cache** `data/geocode_cache.csv` (query → result). `make transform`
-  stays fast and repeatable and works offline. The API is only called for new branches.
-- **Tests:** mock the HTTP calls. Never hit Kartverket in `make test`.
-
-## Not doing (for now)
-
-- **Finding addresses in activity descriptions** (e.g. Arendal's "Hans Thornes vei 26"). A
-  description often lists several addresses (Oslo's homework help lists three), so picking
-  the branch's own one goes wrong easily. Reconsider only if steps 1–3 leave many gaps.
-
-## Open questions
-
-- Kartverket publishes no rate limit for stedsnavn or adresser (no key or login is needed). We stay at
-  ≤ 2 requests/s. Breaking API changes are announced 3 months ahead on
-  https://status.kartverket.no. Before relying on `punktsok` (step 1), check its terms.
-- The branches that still miss (listed above) are seeded in `data/overrides.csv`, with
-  their coordinates still to fill in.
-- Rerun `make fixtures` so the tests use pages without addresses.
+- **Not every street address is in the register.** Some streets aren't found under the
+  scraped post town (e.g. Sykehjemsvn. 5, Stathelle; Kleiva 2, Hasvåg). Those branches
+  fall back to the town or municipality centre.
+- **Approximate markers look the same as exact ones.** Idea: show `place` locations with
+  a different marker and "approximate location" in the popup.
+- **Reverse geocoding.** The 84 branches with site coordinates could get a clean address
+  from Kartverket's `punktsok`. Check its terms first.
+- **Addresses in activity descriptions** (e.g. "Hans Thornes vei 26") are not used. A
+  description often lists several addresses, so picking the branch's own one easily goes
+  wrong.
+- **Kartverket's limits.** Kartverket publishes no rate limit for these APIs. We stay at
+  2 requests per second or fewer. Breaking changes are announced 3 months ahead on
+  <https://status.kartverket.no>.
+- **Test fixtures.** Rerun `make fixtures` from time to time so the saved test pages
+  match the live site.
