@@ -5,7 +5,7 @@ import pytest
 
 from backend import config, storage, transform
 from backend.categories import CATEGORIES, OTHER, categorize
-from backend.filters import filter_activities, filter_branches
+from backend.filters import filter_branches
 from backend.geocode import GeocodeResult
 from backend.mapview import branch_payloads, build_map, excerpt
 
@@ -264,16 +264,6 @@ def test_filter_branches() -> None:
     assert set(filter_branches(branches, search="  ARENDAL ").branch_slug) == {
         "arendal"
     }
-
-
-def test_filter_activities_drops_rows_without_activity() -> None:
-    activities = transform.build_tables(raw_rows())["activities"]
-
-    assert len(filter_activities(activities)) == 3
-    assert filter_activities(activities, search="lekser").activity.tolist() == [
-        "Leksehjelp"
-    ]
-    assert filter_activities(activities, categories=["RØFF"]).empty
 
 
 # ── map ───────────────────────────────────────────────────────────────────────

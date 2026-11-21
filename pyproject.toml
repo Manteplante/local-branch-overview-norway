@@ -1,10 +1,10 @@
 [project]
 name = "local-branch-overview"
 version = "1.0.0"
-description = "Add your description here"
+description = "Interactive map of the Norwegian Red Cross local branches and their activities, scraped from rodekors.no and geocoded with Kartverket"
 readme = "README.md"
 authors = [
-    { name = "Manteplante", email = "matiasmantepizarro@gmail.com" }
+    { name = "Manteplante" }
 ]
 requires-python = ">=3.12"
 dependencies = [
@@ -17,7 +17,6 @@ dependencies = [
 ]
 
 [project.scripts]
-local-branch-overview = "local_branch_overview:main"
 scrape-branches = "local_branch_overview.scraper.run:main"
 
 [build-system]

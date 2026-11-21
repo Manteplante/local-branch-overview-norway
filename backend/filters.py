@@ -38,22 +38,3 @@ def filter_branches(
     if search.strip():
         df = df[_matches(df, ["branch", "address", "categories"], search)]
     return df
-
-
-def filter_activities(
-    activities: pd.DataFrame,
-    *,
-    districts: list[str] | None = None,
-    categories: list[str] | None = None,
-    search: str = "",
-) -> pd.DataFrame:
-    """Activities in `districts` and `categories`, matching `search` (branch, activity name
-    or description). Rows without an activity are dropped."""
-    df = activities[activities["activity"].fillna("") != ""]
-    if districts:
-        df = df[df["district"].isin(districts)]
-    if categories:
-        df = df[df["category"].isin(categories)]
-    if search.strip():
-        df = df[_matches(df, ["branch", "activity", "description"], search)]
-    return df
