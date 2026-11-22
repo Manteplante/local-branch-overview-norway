@@ -342,7 +342,14 @@ def rescrape_empty(
     for path in sorted(out_dir.glob("*.csv")):
         old = pd.read_csv(path, dtype=str, keep_default_na=False)
         slug = old["district_slug"].iloc[0] if len(old) else path.stem
-        if slug in SINGLE_BRANCH_PAGES or (only and slug not in only):
+        if slug in SINGLE_BRANCH_PAGES:
+            continue
+        source_slug = (
+            old["branch_url"].iloc[0].removeprefix(DISTRICTS_URL).split("/", 1)[0]
+            if len(old)
+            else slug
+        )
+        if only and slug not in only and source_slug not in only:
             continue
         has_activity = old["activity"].ne("").groupby(old["branch_slug"]).any()
         empty = has_activity[~has_activity].index.tolist()
