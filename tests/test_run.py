@@ -191,9 +191,10 @@ def test_activities_from_linked_subpage() -> None:
         }
     )
 
-    df, failed = scrape_district(client, DISTRICT, [_branch(BODO)])
+    df, failed, incomplete = scrape_district(client, DISTRICT, [_branch(BODO)])
 
     assert failed == []
+    assert incomplete == []
     assert len(df) == 16
     assert set(df.address) == {"Storgata 54, 8006 BODØ"}  # from the branch page
     assert client.urls == [BODO, f"{BODO}om-oss/vare-aktiviteter/"]
@@ -209,11 +210,12 @@ def test_activities_from_linked_category_pages() -> None:
         }
     )
 
-    df, failed = scrape_district(
+    df, failed, incomplete = scrape_district(
         client, DISTRICT, [_branch(KRISTIANSAND)], limit_categories=2
     )
 
     assert failed == []
+    assert incomplete == [KRISTIANSAND]
     # 2 categories: barn-og-unge has 7 activities, the other page (fake) none.
     assert len(df) == 7
     assert set(df.section) == {"Barn og Ungdom"}
@@ -224,12 +226,35 @@ def test_failed_activities_subpage_keeps_the_branch() -> None:
     subpage = f"{BODO}om-oss/vare-aktiviteter/"
     client = FakeClient({BODO: _nested("bodo")}, fail=frozenset({subpage}))
 
-    df, failed = scrape_district(client, DISTRICT, [_branch(BODO)])
+    df, failed, incomplete = scrape_district(client, DISTRICT, [_branch(BODO)])
 
     assert failed == []
+    assert incomplete == [BODO]
     assert len(df) == 1
     assert df.iloc[0].activity == ""
     assert df.iloc[0].address == "Storgata 54, 8006 BODØ"
+
+
+def test_failed_category_keeps_metadata_and_marks_scrape_incomplete() -> None:
+    hub = f"{KRISTIANSAND}aktiviteter/"
+    failed_category = f"{hub}fellesskap-inkludering/"
+    client = FakeClient(
+        {
+            KRISTIANSAND: _nested("kristiansand"),
+            hub: _nested("kristiansand_aktiviteter"),
+            f"{hub}barn-og-unge/": _nested("kristiansand_barn-og-unge"),
+        },
+        fail=frozenset({failed_category}),
+    )
+
+    df, failed, incomplete = scrape_district(
+        client, DISTRICT, [_branch(KRISTIANSAND)], limit_categories=2
+    )
+
+    assert failed == []
+    assert incomplete == [KRISTIANSAND]
+    assert len(df) == 7
+    assert set(df.address) == {"Vesterveien 6, 4616 KRISTIANSAND S"}
 
 
 def _raw_csv(path: Path) -> None:
@@ -289,4 +314,45 @@ def test_rescrape_empty_keeps_old_rows_on_failure(tmp_path: Path) -> None:
     failed = rescrape_empty(FakeClient({}, fail=frozenset({BODO})), tmp_path)
 
     assert failed == [BODO]
+    assert path.read_text(encoding="utf-8") == before
+
+
+def test_rescrape_empty_keeps_old_rows_when_a_linked_category_fails(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "agder.csv"
+    old = pd.DataFrame(
+        [
+            {
+                "district": "Agder",
+                "district_slug": "agder",
+                "branch": "Kristiansand",
+                "branch_slug": "kristiansand",
+                "address": "Old address",
+                "latitude": "",
+                "longitude": "",
+                "section": "",
+                "activity": "",
+                "description": "",
+                "branch_url": KRISTIANSAND,
+            }
+        ],
+        columns=COLUMNS,
+    )
+    old.to_csv(path, index=False)
+    before = path.read_text(encoding="utf-8")
+    hub = f"{KRISTIANSAND}aktiviteter/"
+    failed_category = f"{hub}fellesskap-inkludering/"
+    client = FakeClient(
+        {
+            KRISTIANSAND: _nested("kristiansand"),
+            hub: _nested("kristiansand_aktiviteter"),
+            f"{hub}barn-og-unge/": _nested("kristiansand_barn-og-unge"),
+        },
+        fail=frozenset({failed_category}),
+    )
+
+    failed = rescrape_empty(client, tmp_path)
+
+    assert failed == []
     assert path.read_text(encoding="utf-8") == before
