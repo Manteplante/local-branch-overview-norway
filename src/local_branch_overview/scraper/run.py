@@ -378,11 +378,7 @@ def rescrape_empty(
             )
             df, branch_failed, incomplete = scrape_district(client, district, [branch])
             failed += branch_failed
-            if (
-                branch_failed
-                or incomplete
-                or not df["activity"].ne("").any()
-            ):
+            if branch_failed or incomplete or not df["activity"].ne("").any():
                 parts.append(rows)  # nothing new: keep the old rows
                 continue
             updated += 1
