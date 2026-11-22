@@ -100,36 +100,40 @@ def _rows(district: District, branch: Branch, details: BranchDetails) -> list[di
 
 def _linked_activities(
     client: Fetcher, branch: Branch, html: str, limit: int | None = None
-) -> list[Activity]:
+) -> tuple[list[Activity], bool]:
     """Activities on a subpage linked from the branch page, see `find_activities_link`.
 
     Either the subpage lists them itself (Bodø), or it links to category pages that do
     (Kristiansand); then `section` is the category name and `limit` caps the categories.
-    A failed subpage is logged and skipped: the branch keeps its own page's data.
+    A failed subpage is logged and skipped; the returned flag marks the scrape incomplete.
     """
     url = find_activities_link(html, branch.url)
     if url is None:
-        return []
+        return [], True
     log.info("        following activities link %s", url)
     try:
         page = client.get(url)
     except Exception:
         log.exception("  ✗ activities page failed, skipping %s", url)
-        return []
+        return [], False
     # Only expanders here: a hub lists its categories as `list-page__item`s too.
     activities = parse_branch_page(page).activities
     if activities:
-        return activities
-    for category in parse_activity_cards(page, url)[:limit]:
+        return activities, True
+    categories = parse_activity_cards(page, url)
+    selected = categories[:limit]
+    complete = len(selected) == len(categories)
+    for category in selected:
         try:
             page = client.get(category.url)
         except Exception:
             log.exception("  ✗ category page failed, skipping %s", category.url)
+            complete = False
             continue
         # The list first: category pages may also hold expanders about volunteering.
         found = parse_activity_list(page) or parse_branch_page(page).activities
         activities += [replace(a, section=category.name) for a in found]
-    return activities
+    return activities, complete
 
 
 def scrape_district(
@@ -137,10 +141,11 @@ def scrape_district(
     district: District,
     branches: list[Branch],
     limit_categories: int | None = None,
-) -> tuple[pd.DataFrame, list[str]]:
-    """Rows for one district (one per activity) and the URLs of branches that failed."""
+) -> tuple[pd.DataFrame, list[str], list[str]]:
+    """Rows for one district, plus failed and incompletely scraped branch URLs."""
     rows: list[dict] = []
     failed: list[str] = []
+    incomplete: list[str] = []
     for i, branch in enumerate(branches, 1):
         log.info("  [%d/%d] %s …", i, len(branches), branch.name)
         try:
@@ -151,13 +156,15 @@ def scrape_district(
             failed.append(branch.url)
             continue
         if not details.activities:
-            details = replace(
-                details,
-                activities=_linked_activities(client, branch, html, limit_categories),
+            activities, complete = _linked_activities(
+                client, branch, html, limit_categories
             )
+            details = replace(details, activities=activities)
+            if not complete:
+                incomplete.append(branch.url)
         log.info("        %s", _describe(details))
         rows += _rows(district, branch, details)
-    return pd.DataFrame(rows, columns=COLUMNS), failed
+    return pd.DataFrame(rows, columns=COLUMNS), failed, incomplete
 
 
 def scrape_single_branch(
@@ -319,7 +326,7 @@ def scrape(
             else:
                 if len(parts) > 1:
                     log.info("  %s: %d branches", part.name, len(members))
-                df, status.failed = scrape_district(
+                df, status.failed, _ = scrape_district(
                     client, part, members[:limit_branches], limit_branches
                 )
             _save(df, path, status)
@@ -334,8 +341,8 @@ def rescrape_empty(
     """Re-scrape branches whose rows in `<out_dir>/*.csv` have no activity, in place.
 
     Each such branch's rows are replaced by a fresh scrape. Other rows are left
-    byte-for-byte as they were, and failed branches keep their old rows. Returns the
-    failed URLs. Useful after the parser learns a new page layout.
+    byte-for-byte as they were, and failed or incomplete branches keep their old rows.
+    Returns the failed URLs. Useful after the parser learns a new page layout.
     """
     failed: list[str] = []
     found = updated = 0
@@ -369,9 +376,13 @@ def rescrape_empty(
             branch = Branch(
                 name=first["branch"], slug=branch_slug, url=first["branch_url"]
             )
-            df, branch_failed = scrape_district(client, district, [branch])
+            df, branch_failed, incomplete = scrape_district(client, district, [branch])
             failed += branch_failed
-            if branch_failed or not df["activity"].ne("").any():
+            if (
+                branch_failed
+                or incomplete
+                or not df["activity"].ne("").any()
+            ):
                 parts.append(rows)  # nothing new: keep the old rows
                 continue
             updated += 1
