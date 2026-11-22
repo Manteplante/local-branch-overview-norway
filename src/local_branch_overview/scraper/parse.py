@@ -234,6 +234,78 @@ def parse_activity_categories(html: str, index_url: str) -> list[Category]:
     return list(categories.values())
 
 
+def find_activities_link(html: str, branch_url: str) -> str | None:
+    """A card linking to the branch's activities, e.g. "Aktiviteter i Bodø Røde Kors".
+
+    Some branches list no activities on their own page but on a subpage (at any depth below
+    the branch) behind an `a.entry__link` card whose text mentions "aktivitet".
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    path = branch_url.removeprefix(BASE_URL)
+    for link in soup.select("a.entry__link[href]"):
+        href = link["href"]
+        if (
+            href.startswith(path)
+            and href != path
+            and "aktivitet" in link.get_text().lower()
+        ):
+            return urljoin(BASE_URL, href)
+    return None
+
+
+def parse_activity_cards(html: str, page_url: str) -> list[Category]:
+    """Category cards (`a.entry__link`) one level below an activities hub page.
+
+    E.g. Kristiansand's /aktiviteter/ links to "Barn og Ungdom", "Beredskap", …
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    path = page_url.removeprefix(BASE_URL)
+    child = re.compile(rf"^{re.escape(path)}[^/]+/$")
+    categories: dict[str, Category] = {}
+    for link in soup.select("a.entry__link[href]"):
+        if child.match(link["href"]):
+            url = urljoin(BASE_URL, link["href"])
+            categories.setdefault(url, Category(name=_clean(link.get_text()), url=url))
+    return list(categories.values())
+
+
+def parse_activity_list(html: str) -> list[Activity]:
+    """Activities listed as one subpage each, as a title + intro per activity.
+
+    Two layouts: `article.list-page__item` (`h2 > a` + `.lead`, Kristiansand) and
+    `article.article-teaser` (heading inside `.article-teaser__intro`, Trondheim).
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    activities = []
+    for item in soup.select("article.list-page__item"):
+        title = item.select_one("h2 > a")
+        if title is None:
+            continue
+        lead = item.select_one(".lead")
+        activities.append(
+            Activity(
+                section="",
+                name=_clean(title.get_text()),
+                description=_clean(lead.get_text(" ")) if lead else "",
+            )
+        )
+    for item in soup.select("article.article-teaser"):
+        heading = item.select_one(".article-teaser__heading")
+        if heading is None:
+            continue
+        name = _clean(heading.get_text())
+        heading.decompose()  # it sits inside the intro
+        intro = item.select_one(".article-teaser__intro")
+        activities.append(
+            Activity(
+                section="",
+                name=name,
+                description=_clean(intro.get_text(" ")) if intro else "",
+            )
+        )
+    return activities
+
+
 def _visiting_address(soup: BeautifulSoup) -> str:
     """Lines under a "Besøksadresse…" heading, minus the organisation's name."""
     heading = soup.find(

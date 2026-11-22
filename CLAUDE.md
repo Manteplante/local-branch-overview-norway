@@ -13,6 +13,8 @@ make lint / make format / make test
 make hooks / make pre-commit
 make run               # Streamlit app on http://localhost:8501
 make scrape            # scrape all districts to data/raw/<district>.csv (~2-3 h, resumable)
+make scrape-empty      # re-scrape only branches with no activities in data/raw, in place
+                       #   (after a parser fix; ~15-20 min)
 make scrape-sample     # test scrape: <=2 branches per district to data/sample/ (~10 min)
 make geocode           # Kartverket lookup (street address, else place) for branches without
                        #   coordinates -> data/geocode_cache.csv (free, no key; --dry-run, --prune)

@@ -38,6 +38,9 @@ make run           # 5. look at the map
 Then commit `data/geocode_cache.csv`, `data/overrides.csv` and `data/tables/`.
 `data/raw/` stays on your machine.
 
+Changed the parser so it finds more activities? `make scrape-empty` re-scrapes only the
+branches that have none in `data/raw/` (about 15–20 min), then run `make transform`.
+
 Just testing? `make scrape-sample` scrapes at most 2 branches per district (about 10 min)
 into `data/sample/`. To use it, prefix other commands with `RAW_DIR=data/sample`.
 
