@@ -21,7 +21,10 @@ from local_branch_overview.scraper.parse import (
     BranchDetails,
     District,
     branch_index_url,
+    find_activities_link,
+    parse_activity_cards,
     parse_activity_categories,
+    parse_activity_list,
     parse_branch_page,
     parse_branches,
     parse_contact_page,
@@ -95,8 +98,45 @@ def _rows(district: District, branch: Branch, details: BranchDetails) -> list[di
     ]
 
 
+def _linked_activities(
+    client: Fetcher, branch: Branch, html: str, limit: int | None = None
+) -> list[Activity]:
+    """Activities on a subpage linked from the branch page, see `find_activities_link`.
+
+    Either the subpage lists them itself (Bodø), or it links to category pages that do
+    (Kristiansand); then `section` is the category name and `limit` caps the categories.
+    A failed subpage is logged and skipped: the branch keeps its own page's data.
+    """
+    url = find_activities_link(html, branch.url)
+    if url is None:
+        return []
+    log.info("        following activities link %s", url)
+    try:
+        page = client.get(url)
+    except Exception:
+        log.exception("  ✗ activities page failed, skipping %s", url)
+        return []
+    # Only expanders here: a hub lists its categories as `list-page__item`s too.
+    activities = parse_branch_page(page).activities
+    if activities:
+        return activities
+    for category in parse_activity_cards(page, url)[:limit]:
+        try:
+            page = client.get(category.url)
+        except Exception:
+            log.exception("  ✗ category page failed, skipping %s", category.url)
+            continue
+        # The list first: category pages may also hold expanders about volunteering.
+        found = parse_activity_list(page) or parse_branch_page(page).activities
+        activities += [replace(a, section=category.name) for a in found]
+    return activities
+
+
 def scrape_district(
-    client: Fetcher, district: District, branches: list[Branch]
+    client: Fetcher,
+    district: District,
+    branches: list[Branch],
+    limit_categories: int | None = None,
 ) -> tuple[pd.DataFrame, list[str]]:
     """Rows for one district (one per activity) and the URLs of branches that failed."""
     rows: list[dict] = []
@@ -104,11 +144,17 @@ def scrape_district(
     for i, branch in enumerate(branches, 1):
         log.info("  [%d/%d] %s …", i, len(branches), branch.name)
         try:
-            details = parse_branch_page(client.get(branch.url))
+            html = client.get(branch.url)
+            details = parse_branch_page(html)
         except Exception:
             log.exception("  ✗ failed, skipping %s", branch.url)
             failed.append(branch.url)
             continue
+        if not details.activities:
+            details = replace(
+                details,
+                activities=_linked_activities(client, branch, html, limit_categories),
+            )
         log.info("        %s", _describe(details))
         rows += _rows(district, branch, details)
     return pd.DataFrame(rows, columns=COLUMNS), failed
@@ -274,12 +320,58 @@ def scrape(
                 if len(parts) > 1:
                     log.info("  %s: %d branches", part.name, len(members))
                 df, status.failed = scrape_district(
-                    client, part, members[:limit_branches]
+                    client, part, members[:limit_branches], limit_branches
                 )
             _save(df, path, status)
 
     _log_summary(statuses, time.monotonic() - started)
     return [url for s in statuses for url in s.failed]
+
+
+def rescrape_empty(
+    client: Fetcher, out_dir: Path, *, only: set[str] | None = None
+) -> list[str]:
+    """Re-scrape branches whose rows in `<out_dir>/*.csv` have no activity, in place.
+
+    Each such branch's rows are replaced by a fresh scrape. Other rows are left
+    byte-for-byte as they were, and failed branches keep their old rows. Returns the
+    failed URLs. Useful after the parser learns a new page layout.
+    """
+    failed: list[str] = []
+    found = updated = 0
+    for path in sorted(out_dir.glob("*.csv")):
+        old = pd.read_csv(path, dtype=str, keep_default_na=False)
+        slug = old["district_slug"].iloc[0] if len(old) else path.stem
+        if slug in SINGLE_BRANCH_PAGES or (only and slug not in only):
+            continue
+        has_activity = old["activity"].ne("").groupby(old["branch_slug"]).any()
+        empty = has_activity[~has_activity].index.tolist()
+        if not empty:
+            continue
+        found += len(empty)
+        log.info("%s: %d branch(es) without activities", path.name, len(empty))
+        district = District(
+            name=old["district"].iloc[0], slug=slug, url=DISTRICTS_URL + slug
+        )
+        parts: list[pd.DataFrame] = []
+        for branch_slug, rows in old.groupby("branch_slug", sort=False):
+            if branch_slug not in empty:
+                parts.append(rows)
+                continue
+            first = rows.iloc[0]
+            branch = Branch(
+                name=first["branch"], slug=branch_slug, url=first["branch_url"]
+            )
+            df, branch_failed = scrape_district(client, district, [branch])
+            failed += branch_failed
+            if branch_failed or not df["activity"].ne("").any():
+                parts.append(rows)  # nothing new: keep the old rows
+                continue
+            updated += 1
+            parts.append(df)
+        _write_atomic(pd.concat(parts)[COLUMNS], path)
+    log.info("%d of %d empty branch(es) now have activities", updated, found)
+    return failed
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -295,25 +387,35 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "--limit-branches",
         type=int,
-        help="at most N branches per district (Oslo: N activity category pages)",
+        help="at most N branches per district "
+        "(also N activity category pages for Oslo and nested activity pages)",
     )
     parser.add_argument(
         "--force",
         action="store_true",
         help="re-scrape districts that already have a CSV",
     )
+    parser.add_argument(
+        "--only-empty",
+        action="store_true",
+        help="re-scrape only branches without activities in existing CSVs, in place",
+    )
     args = parser.parse_args(argv)
 
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(message)s", datefmt="%H:%M:%S"
     )
-    failed = scrape(
-        PoliteClient(),
-        args.out,
-        only=set(args.district) if args.district else None,
-        limit_branches=args.limit_branches,
-        force=args.force,
-    )
+    only = set(args.district) if args.district else None
+    if args.only_empty:
+        failed = rescrape_empty(PoliteClient(), args.out, only=only)
+    else:
+        failed = scrape(
+            PoliteClient(),
+            args.out,
+            only=only,
+            limit_branches=args.limit_branches,
+            force=args.force,
+        )
     if failed:
         log.warning("%d page(s) failed:\n  %s", len(failed), "\n  ".join(failed))
         raise SystemExit(1)

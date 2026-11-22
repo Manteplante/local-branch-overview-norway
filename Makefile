@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help sync hooks lint format format-check test lock-check pre-commit ci run scrape \
+.PHONY: help sync hooks lint format format-check test lock-check pre-commit ci run scrape scrape-empty \
 	scrape-sample geocode geocode-retry overrides transform report fixtures
 
 # `##@ Name` starts a group in `make help`; `target: ## text` lists a target in it.
@@ -48,6 +48,9 @@ run: ## Run the Streamlit app on http://localhost:8501
 
 scrape: ## Scrape all districts to data/raw (slow, ~2-3 h, resumable)
 	uv run scrape-branches
+
+scrape-empty: ## Re-scrape only branches without activities in data/raw, in place (~15-20 min)
+	uv run scrape-branches --only-empty
 
 scrape-sample: ## Test scrape: <=2 branches per district to data/sample (~10 min)
 	uv run scrape-branches --limit-branches 2 --out data/sample

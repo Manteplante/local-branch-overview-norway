@@ -108,6 +108,7 @@ Run `make help` for the full list.
 | `make ci` | Lock check, lint, format check and tests: exactly what GitHub Actions runs |
 | `make test` / `make lint` / `make format` | Run one of those checks; `format` also fixes |
 | `make scrape` | Scrape all districts to `data/raw/` (2–3 h; rerun to resume) |
+| `make scrape-empty` | Re-scrape only branches without activities, in place (15–20 min) |
 | `make scrape-sample` | Quick test scrape: at most 2 branches per district (about 10 min) |
 | `make geocode` | Look up coordinates for branches without them (free, cached) |
 | `make geocode-retry` | Look up the cached misses again, after changing the matcher |

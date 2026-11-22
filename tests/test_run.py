@@ -3,8 +3,13 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from local_branch_overview.scraper.parse import DISTRICTS_URL
-from local_branch_overview.scraper.run import COLUMNS, scrape
+from local_branch_overview.scraper.parse import DISTRICTS_URL, Branch, District
+from local_branch_overview.scraper.run import (
+    COLUMNS,
+    rescrape_empty,
+    scrape,
+    scrape_district,
+)
 
 SAMPLE_TRONDELAG = Path(__file__).parent / "fixtures/sample/districts/trondelag.html"
 
@@ -158,3 +163,130 @@ def test_oslo_contact_page_failure_writes_nothing(
 
     assert failed == [contact]
     assert not (tmp_path / "oslo.csv").exists()
+
+
+NESTED_FIXTURES = Path(__file__).parent / "fixtures/nested"
+BODO = "https://www.rodekors.no/lokalforeninger/nordland/bodo/"
+KRISTIANSAND = "https://www.rodekors.no/lokalforeninger/agder/kristiansand/"
+
+
+def _nested(name: str) -> str:
+    return (NESTED_FIXTURES / f"{name}.html").read_text(encoding="utf-8")
+
+
+def _branch(url: str) -> Branch:
+    return Branch(name=url.rstrip("/").rsplit("/", 1)[1], slug="x", url=url)
+
+
+DISTRICT = District(
+    name="D", slug="d", url="https://www.rodekors.no/lokalforeninger/d/"
+)
+
+
+def test_activities_from_linked_subpage() -> None:
+    client = FakeClient(
+        {
+            BODO: _nested("bodo"),
+            f"{BODO}om-oss/vare-aktiviteter/": _nested("bodo_aktiviteter"),
+        }
+    )
+
+    df, failed = scrape_district(client, DISTRICT, [_branch(BODO)])
+
+    assert failed == []
+    assert len(df) == 16
+    assert set(df.address) == {"Storgata 54, 8006 BODØ"}  # from the branch page
+    assert client.urls == [BODO, f"{BODO}om-oss/vare-aktiviteter/"]
+
+
+def test_activities_from_linked_category_pages() -> None:
+    hub = f"{KRISTIANSAND}aktiviteter/"
+    client = FakeClient(
+        {
+            KRISTIANSAND: _nested("kristiansand"),
+            hub: _nested("kristiansand_aktiviteter"),
+            f"{hub}barn-og-unge/": _nested("kristiansand_barn-og-unge"),
+        }
+    )
+
+    df, failed = scrape_district(
+        client, DISTRICT, [_branch(KRISTIANSAND)], limit_categories=2
+    )
+
+    assert failed == []
+    # 2 categories: barn-og-unge has 7 activities, the other page (fake) none.
+    assert len(df) == 7
+    assert set(df.section) == {"Barn og Ungdom"}
+    assert len(client.urls) == 4  # branch, hub, 2 categories
+
+
+def test_failed_activities_subpage_keeps_the_branch() -> None:
+    subpage = f"{BODO}om-oss/vare-aktiviteter/"
+    client = FakeClient({BODO: _nested("bodo")}, fail=frozenset({subpage}))
+
+    df, failed = scrape_district(client, DISTRICT, [_branch(BODO)])
+
+    assert failed == []
+    assert len(df) == 1
+    assert df.iloc[0].activity == ""
+    assert df.iloc[0].address == "Storgata 54, 8006 BODØ"
+
+
+def _raw_csv(path: Path) -> None:
+    """Agder CSV: arendal with an activity, bodo without (any branch URL will do)."""
+    base = {"district": "Agder", "district_slug": "agder", "latitude": "58.1"}
+    rows = [
+        base
+        | {
+            "branch": "Arendal",
+            "branch_slug": "arendal",
+            "address": "A 1",
+            "section": "S",
+            "activity": "Leksehjelp",
+            "description": "D",
+            "branch_url": ARENDAL,
+        },
+        base
+        | {
+            "branch": "Bodø",
+            "branch_slug": "bodo",
+            "address": "Old 1",
+            "section": "",
+            "activity": "",
+            "description": "",
+            "branch_url": BODO,
+        },
+    ]
+    pd.DataFrame(rows, columns=COLUMNS).to_csv(path, index=False)
+
+
+def test_rescrape_empty_replaces_only_empty_branches(tmp_path: Path) -> None:
+    path = tmp_path / "agder.csv"
+    _raw_csv(path)
+    before = path.read_text(encoding="utf-8").splitlines()
+    client = FakeClient(
+        {
+            BODO: _nested("bodo"),
+            f"{BODO}om-oss/vare-aktiviteter/": _nested("bodo_aktiviteter"),
+        }
+    )
+
+    failed = rescrape_empty(client, tmp_path)
+
+    df = pd.read_csv(path, keep_default_na=False)
+    assert failed == []
+    assert client.urls == [BODO, f"{BODO}om-oss/vare-aktiviteter/"]  # not arendal
+    assert path.read_text(encoding="utf-8").splitlines()[:2] == before[:2]
+    assert list(df.branch_slug) == ["arendal"] + ["bodo"] * 16
+    assert set(df[df.branch_slug == "bodo"].address) == {"Storgata 54, 8006 BODØ"}
+
+
+def test_rescrape_empty_keeps_old_rows_on_failure(tmp_path: Path) -> None:
+    path = tmp_path / "agder.csv"
+    _raw_csv(path)
+    before = path.read_text(encoding="utf-8")
+
+    failed = rescrape_empty(FakeClient({}, fail=frozenset({BODO})), tmp_path)
+
+    assert failed == [BODO]
+    assert path.read_text(encoding="utf-8") == before
