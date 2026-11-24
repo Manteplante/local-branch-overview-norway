@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.2](https://github.com/Manteplante/local-branch-overview-norway/compare/v1.1.1...v1.1.2) (2026-11-24)
+
+
+### Documentation
+
+* uploaded new presentation ([ea45d2d](https://github.com/Manteplante/local-branch-overview-norway/commit/ea45d2d8a609d0ca566e20469c133a50c42d8976))
+
 ## [1.1.1](https://github.com/Manteplante/local-branch-overview-norway/compare/v1.1.0...v1.1.1) (2026-11-24)
 
 
